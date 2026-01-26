@@ -117,7 +117,7 @@ export async function getProducts(params?: {
   try {
     const queryParams = new URLSearchParams();
     
-    queryParams.append('populate', 'image,category,brand');
+    queryParams.append('populate', '*');
     
     if (params?.limit) {
       queryParams.append('pagination[pageSize]', params.limit.toString());
@@ -182,7 +182,7 @@ export async function getProductsByCategory(categorySlug: string, limit: number 
 export async function getBrands(): Promise<any[]> {
   try {
     const response = await fetchAPI<{ data: any[] }>(
-      '/brands?populate=logo,logoLight,logoDark&sort=order:asc'
+      '/brands?populate=*&sort=order:asc'
     );
     return response.data || [];
   } catch (error) {
