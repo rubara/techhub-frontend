@@ -153,7 +153,7 @@ interface UIStore {
   theme: Theme;
   language: Language;
   isDark: boolean;
-  t: typeof translations.bg;
+  t: typeof translations.bg | typeof translations.en;
   isMenuOpen: boolean;
   isSearchOpen: boolean;
   isCartOpen: boolean;

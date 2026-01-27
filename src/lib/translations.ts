@@ -1,10 +1,125 @@
 // TechHub.bg - Translations
 
-export const translations = {
+export interface TranslationType {
+  // Utility Bar
+  freeShippingBar: string;
+
+  // Navigation
+  search: string;
+  searchPlaceholder: string;
+  categories: string;
+  deals: string;
+  newArrivals: string;
+  brands: string;
+  pcBuilder: string;
+  gamingPCs: string;
+  components: string;
+  peripherals: string;
+  computers: string;
+  support: string;
+
+  // User
+  wishlist: string;
+  login: string;
+  register: string;
+  myAccount: string;
+  myOrders: string;
+  settings: string;
+  logout: string;
+  welcome: string;
+
+  // Sections
+  trendingNow: string;
+  hotDeals: string;
+  topCategories: string;
+  featuredBrands: string;
+  newProducts: string;
+  topSellers: string;
+
+  // Newsletter
+  newsletter: string;
+  newsletterDesc: string;
+  subscribe: string;
+  emailPlaceholder: string;
+  newsletterPlaceholder: string;
+
+  // Product
+  addToCart: string;
+  add: string;
+  inStock: string;
+  outOfStock: string;
+  limited: string;
+  lastOne: string;
+  viewAll: string;
+  viewProduct: string;
+  seeAll: string;
+
+  // Cart
+  cart: string;
+  cartEmpty: string;
+  total: string;
+  checkout: string;
+  continueShopping: string;
+
+  // Benefits
+  freeShipping: string;
+  freeShippingText: string;
+  returns: string;
+  returnsText: string;
+  securePayment: string;
+  securePaymentText: string;
+
+  // Footer
+  footer: {
+    about: string;
+    contact: string;
+    shipping: string;
+    returns: string;
+    privacy: string;
+    terms: string;
+    copyright: string;
+  };
+  aboutUs: string;
+  contact: string;
+  terms: string;
+  privacy: string;
+  delivery: string;
+  followUs: string;
+  allRightsReserved: string;
+
+  // Categories
+  gpu: string;
+  cpu: string;
+  motherboard: string;
+  ram: string;
+  storage: string;
+  cooling: string;
+  cases: string;
+  psu: string;
+
+  // Peripherals Subcategories
+  keyboards: string;
+  mice: string;
+  headsets: string;
+  monitors: string;
+  webcams: string;
+  controllers: string;
+
+  // Search
+  searchResults: string;
+  noResults: string;
+  searchFor: string;
+
+  // Misc
+  loading: string;
+  error: string;
+}
+
+export const translations: { en: TranslationType; bg: TranslationType } = {
   en: {
     // Utility Bar
     freeShippingBar: 'Free shipping over 150 BGN',
-    
+
     // Navigation
     search: 'Search for products...',
     searchPlaceholder: 'Search products...',
@@ -18,7 +133,7 @@ export const translations = {
     peripherals: 'Peripherals',
     computers: 'Computers',
     support: 'Support',
-    
+
     // User
     wishlist: 'Wishlist',
     login: 'Login',
@@ -28,7 +143,7 @@ export const translations = {
     settings: 'Settings',
     logout: 'Logout',
     welcome: 'Welcome',
-    
+
     // Sections
     trendingNow: 'TRENDING NOW',
     hotDeals: 'HOT DEALS',
@@ -36,14 +151,14 @@ export const translations = {
     featuredBrands: 'FEATURED BRANDS',
     newProducts: 'NEW ARRIVALS',
     topSellers: 'Top Sellers',
-    
+
     // Newsletter
     newsletter: 'SUBSCRIBE TO OUR NEWSLETTER',
     newsletterDesc: 'Get exclusive deals and be the first to know about new arrivals',
     subscribe: 'Subscribe',
     emailPlaceholder: 'Enter your email address',
     newsletterPlaceholder: 'Your email...',
-    
+
     // Product
     addToCart: 'Add to Cart',
     add: 'Add',
@@ -54,14 +169,14 @@ export const translations = {
     viewAll: 'View All',
     viewProduct: 'View Product',
     seeAll: 'See all',
-    
+
     // Cart
     cart: 'Cart',
     cartEmpty: 'Your cart is empty',
     total: 'Total',
     checkout: 'Checkout',
     continueShopping: 'Continue shopping',
-    
+
     // Benefits
     freeShipping: 'Free Shipping',
     freeShippingText: 'On orders over 200 BGN',
@@ -69,7 +184,7 @@ export const translations = {
     returnsText: 'Hassle-free returns',
     securePayment: 'Secure Payment',
     securePaymentText: '100% secure checkout',
-    
+
     // Footer
     footer: {
       about: 'About Us',
@@ -87,7 +202,7 @@ export const translations = {
     delivery: 'Delivery',
     followUs: 'Follow Us',
     allRightsReserved: 'All rights reserved',
-    
+
     // Categories
     gpu: 'Graphics Cards',
     cpu: 'Processors',
@@ -97,7 +212,7 @@ export const translations = {
     cooling: 'Cooling',
     cases: 'Cases',
     psu: 'Power Supplies',
-    
+
     // Peripherals Subcategories
     keyboards: 'Keyboards',
     mice: 'Mice',
@@ -105,21 +220,21 @@ export const translations = {
     monitors: 'Monitors',
     webcams: 'Webcams',
     controllers: 'Controllers',
-    
+
     // Search
     searchResults: 'Search Results',
     noResults: 'No products found',
     searchFor: 'Search for',
-    
+
     // Misc
     loading: 'Loading...',
     error: 'Error',
   },
-  
+
   bg: {
     // Utility Bar
     freeShippingBar: 'Безплатна доставка над 150лв.',
-    
+
     // Navigation
     search: 'Търсене на продукти...',
     searchPlaceholder: 'Търси продукти...',
@@ -133,7 +248,7 @@ export const translations = {
     peripherals: 'Периферия',
     computers: 'Компютри',
     support: 'Поддръжка',
-    
+
     // User
     wishlist: 'Любими',
     login: 'Вход',
@@ -143,7 +258,7 @@ export const translations = {
     settings: 'Настройки',
     logout: 'Изход',
     welcome: 'Здравей',
-    
+
     // Sections
     trendingNow: 'АКТУАЛНИ ПРОДУКТИ',
     hotDeals: 'ГОРЕЩИ ОФЕРТИ',
@@ -151,14 +266,14 @@ export const translations = {
     featuredBrands: 'ВОДЕЩИ МАРКИ',
     newProducts: 'НОВИ ПРОДУКТИ',
     topSellers: 'Топ продажби',
-    
+
     // Newsletter
     newsletter: 'АБОНИРАЙ СЕ ЗА БЮЛЕТИНА',
     newsletterDesc: 'Получи ексклузивни оферти и бъди първият, който научава за новите продукти',
     subscribe: 'Абонирай се',
     emailPlaceholder: 'Въведи имейл адрес',
     newsletterPlaceholder: 'Твоят имейл...',
-    
+
     // Product
     addToCart: 'Добави',
     add: 'Добави',
@@ -169,14 +284,14 @@ export const translations = {
     viewAll: 'Виж всички',
     viewProduct: 'Виж продукта',
     seeAll: 'Виж всички',
-    
+
     // Cart
     cart: 'Количка',
     cartEmpty: 'Количката е празна',
     total: 'Общо',
     checkout: 'Поръчай',
     continueShopping: 'Продължи пазаруването',
-    
+
     // Benefits
     freeShipping: 'Безплатна Доставка',
     freeShippingText: 'За поръчки над 200 лв',
@@ -184,7 +299,7 @@ export const translations = {
     returnsText: 'Лесно връщане',
     securePayment: 'Сигурно Плащане',
     securePaymentText: '100% защитено',
-    
+
     // Footer
     footer: {
       about: 'За Нас',
@@ -202,7 +317,7 @@ export const translations = {
     delivery: 'Доставка',
     followUs: 'Последвай ни',
     allRightsReserved: 'Всички права запазени',
-    
+
     // Categories
     gpu: 'Видеокарти',
     cpu: 'Процесори',
@@ -212,7 +327,7 @@ export const translations = {
     cooling: 'Охлаждане',
     cases: 'Кутии',
     psu: 'Захранвания',
-    
+
     // Peripherals Subcategories
     keyboards: 'Клавиатури',
     mice: 'Мишки',
@@ -220,18 +335,18 @@ export const translations = {
     monitors: 'Монитори',
     webcams: 'Уеб камери',
     controllers: 'Контролери',
-    
+
     // Search
     searchResults: 'Резултати от търсенето',
     noResults: 'Няма намерени продукти',
     searchFor: 'Търсене за',
-    
+
     // Misc
     loading: 'Зареждане...',
     error: 'Грешка',
   },
-} as const;
+};
 
-export type TranslationKey = keyof typeof translations.en;
+export type TranslationKey = keyof TranslationType;
 export type Language = 'bg' | 'en';
-export type Translations = typeof translations.en;
+export type Translations = TranslationType;
