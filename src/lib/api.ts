@@ -214,3 +214,114 @@ export async function searchProducts(query: string, limit: number = 20): Promise
     return [];
   }
 }
+
+
+// ============================================
+// CATEGORY PAGE - FILTERED PRODUCTS
+// ============================================
+
+export interface ProductFilters {
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+  sort?: string;
+  page?: number;
+  pageSize?: number;
+  [key: string]: any;
+}
+
+export async function getFilteredProducts(filters: ProductFilters): Promise<{
+  products: any[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    pageCount: number;
+    total: number;
+  } | null;
+}> {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    // Populate relations
+    queryParams.append('populate', '*');
+    
+    // Category filter
+    if (filters.category) {
+      queryParams.append('filters[category][slug][$eq]', filters.category);
+    }
+    
+    // Price range
+    if (filters.minPrice !== undefined) {
+      queryParams.append('filters[price][$gte]', filters.minPrice.toString());
+    }
+    if (filters.maxPrice !== undefined) {
+      queryParams.append('filters[price][$lte]', filters.maxPrice.toString());
+    }
+    
+    // In stock filter
+    if (filters.inStock) {
+      queryParams.append('filters[stock][$gt]', '0');
+    }
+    
+    // Sorting
+    if (filters.sort) {
+      queryParams.append('sort', filters.sort);
+    } else {
+      queryParams.append('sort', 'createdAt:desc');
+    }
+    
+    // Pagination
+    queryParams.append('pagination[page]', (filters.page || 1).toString());
+    queryParams.append('pagination[pageSize]', (filters.pageSize || 24).toString());
+
+    const response = await fetchAPI<{ data: any[]; meta: any }>(
+      `/products?${queryParams.toString()}`
+    );
+
+    return {
+      products: response.data || [],
+      pagination: response.meta?.pagination || null,
+    };
+  } catch (error) {
+    console.error('Failed to fetch filtered products:', error);
+    return { products: [], pagination: null };
+  }
+}
+
+export async function getCategoryWithParent(slug: string): Promise<any | null> {
+  try {
+    const response = await fetchAPI<{ data: any[] }>(
+      `/categories?filters[slug][$eq]=${slug}&populate=*`
+    );
+    if (response.data.length === 0) return null;
+    return response.data[0];
+  } catch (error) {
+    console.error('Failed to fetch category:', error);
+    return null;
+  }
+}
+
+export async function getChildCategories(parentId: number): Promise<any[]> {
+  try {
+    const response = await fetchAPI<{ data: any[] }>(
+      `/categories?filters[category][id][$eq]=${parentId}&populate=image&sort=order:asc`
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Failed to fetch child categories:', error);
+    return [];
+  }
+}
+
+export async function getProductCount(categorySlug: string): Promise<number> {
+  try {
+    const response = await fetchAPI<{ meta: any }>(
+      `/products?filters[category][slug][$eq]=${categorySlug}&pagination[pageSize]=1`
+    );
+    return response.meta?.pagination?.total || 0;
+  } catch (error) {
+    console.error('Failed to fetch product count:', error);
+    return 0;
+  }
+}

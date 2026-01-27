@@ -7,6 +7,7 @@ export const colors = {
   // Backgrounds
   midnightBlack: '#101720',
   white: '#FFFFFF',
+softWhite: '#F5F5F5',
   
   // Secondary
   purple: '#5940D3',

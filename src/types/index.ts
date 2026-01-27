@@ -158,3 +158,60 @@ export type Theme = 'dark' | 'light';
 
 // Language
 export type Language = 'bg' | 'en';
+// ============================================
+// FILTER TYPES
+// ============================================
+
+export type FilterType = 'checkbox' | 'range' | 'toggle';
+
+export interface FilterOption {
+  value: string;
+  label: string;
+  labelBg: string;
+  count?: number;
+}
+
+export interface FilterConfig {
+  id: string;
+  label: string;
+  labelBg: string;
+  type: FilterType;
+  field: string;
+  options?: string[] | FilterOption[] | 'dynamic';
+  min?: number;
+  max?: number;
+  step?: number;
+  unit?: string;
+  condition?: string;
+  displayFormat?: string;
+}
+
+export interface CategoryFilterConfig {
+  category: string;
+  specType: string | null;
+  specRelation: string | null;
+  filters: FilterConfig[];
+}
+
+export interface ActiveFilter {
+  filterId: string;
+  value: string | number | boolean;
+  label: string;
+}
+
+export interface FilterState {
+  [key: string]: string | string[] | number | boolean | undefined;
+}
+
+export interface SortOption {
+  value: string;
+  label: string;
+  labelBg: string;
+}
+
+export interface PaginationState {
+  page: number;
+  pageSize: number;
+  total: number;
+  pageCount: number;
+}
