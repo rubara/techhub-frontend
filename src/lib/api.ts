@@ -61,11 +61,19 @@ function transformStrapiData<T>(item: any): T & { id: number } {
 // CATEGORIES
 // ============================================
 
-export async function getCategories(): Promise<any[]> {
+export async function getCategories(options?: { showOnHomepage?: boolean; showInMenu?: boolean }): Promise<any[]> {
   try {
-    const response = await fetchAPI<{ data: any[] }>(
-      '/categories?populate=image&sort=order:asc'
-    );
+    let endpoint = '/categories?populate=*&sort=order:asc';
+    
+    if (options?.showOnHomepage !== undefined) {
+      endpoint += `&filters[showOnHomepage][$eq]=${options.showOnHomepage}`;
+    }
+    
+    if (options?.showInMenu !== undefined) {
+      endpoint += `&filters[showInMenu][$eq]=${options.showInMenu}`;
+    }
+    
+    const response = await fetchAPI<{ data: any[] }>(endpoint);
     return response.data || [];
   } catch (error) {
     console.error('Failed to fetch categories:', error);

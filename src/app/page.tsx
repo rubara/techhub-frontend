@@ -21,7 +21,7 @@ export default async function HomePage() {
   try {
     [heroSlides, categories, trendingProducts, newProducts, brands] = await Promise.all([
       getHeroSlides().catch(() => []),
-      getCategories().catch(() => []),
+      getCategories({ showOnHomepage: true }).catch(() => []),
       getProducts({ limit: 4, sort: 'createdAt:desc' }).then(r => r.products).catch(() => []),
       getProducts({ limit: 4, featured: true }).then(r => r.products).catch(() => []),
       getBrands().catch(() => []),
