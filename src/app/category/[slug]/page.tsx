@@ -133,12 +133,13 @@ export default function CategoryPage() {
     fetchCategory();
   }, [slug]);
 
-  // Fetch products
+  // Fetch products with filters
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
 
-      const filters: any = {
+      // Build API filters
+      const apiFilters: any = {
         category: slug,
         sort: currentSort,
         page: currentPage,
@@ -147,19 +148,51 @@ export default function CategoryPage() {
 
       // Add price filters
       if (activeFilters.priceMin) {
-        filters.minPrice = activeFilters.priceMin;
+        apiFilters.minPrice = activeFilters.priceMin;
       }
       if (activeFilters.priceMax) {
-        filters.maxPrice = activeFilters.priceMax;
+        apiFilters.maxPrice = activeFilters.priceMax;
       }
 
       // Add stock filter
       if (activeFilters.inStock) {
-        filters.inStock = true;
+        apiFilters.inStock = true;
+      }
+
+      // Build specification filters from filter config
+      if (filterConfig.specRelation) {
+        const specFilters: Record<string, any> = {};
+
+        filterConfig.filters.forEach((filter) => {
+          const filterValue = activeFilters[filter.id];
+          
+          // Skip if no value or it's a non-spec filter
+          if (filterValue === undefined || filterValue === '' || filterValue === false) return;
+          if (filter.id === 'price' || filter.id === 'priceMin' || filter.id === 'priceMax' || filter.id === 'inStock') return;
+
+          // Get the field path (e.g., 'gpuSpecification.chipManufacturer')
+          if (filter.field && filter.field.includes('.')) {
+            const fieldParts = filter.field.split('.');
+            const specField = fieldParts[1]; // e.g., 'chipManufacturer'
+
+            if (Array.isArray(filterValue)) {
+              // Multiple values - use $in operator
+              specFilters[specField] = filterValue;
+            } else {
+              specFilters[specField] = filterValue;
+            }
+          }
+        });
+
+        // Add spec filters to API call
+        if (Object.keys(specFilters).length > 0) {
+          apiFilters.specRelation = filterConfig.specRelation;
+          apiFilters.specFilters = specFilters;
+        }
       }
 
       const { products: fetchedProducts, pagination: fetchedPagination } =
-        await getFilteredProducts(filters);
+        await getFilteredProducts(apiFilters);
 
       setProducts(fetchedProducts);
       if (fetchedPagination) {
@@ -172,7 +205,7 @@ export default function CategoryPage() {
     if (category) {
       fetchProducts();
     }
-  }, [slug, category, activeFilters, currentSort, currentPage]);
+  }, [slug, category, activeFilters, currentSort, currentPage, filterConfig]);
 
   // Handle filter change
   const handleFilterChange = (filterId: string, value: any) => {

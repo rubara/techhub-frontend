@@ -6,7 +6,7 @@ const API_URL = `${STRAPI_URL}/api`;
 // Helper to get full image URL (Strapi v5 format)
 export function getStrapiImageUrl(image: any): string | null {
   if (!image) return null;
-  
+
   // Strapi v5 format: image.url directly
   if (image.url) {
     const url = image.url;
@@ -15,7 +15,7 @@ export function getStrapiImageUrl(image: any): string | null {
     }
     return url;
   }
-  
+
   // Strapi v4 format: image.data.attributes.url (fallback)
   if (image?.data?.attributes?.url) {
     const url = image.data.attributes.url;
@@ -24,7 +24,7 @@ export function getStrapiImageUrl(image: any): string | null {
     }
     return url;
   }
-  
+
   return null;
 }
 
@@ -64,15 +64,15 @@ function transformStrapiData<T>(item: any): T & { id: number } {
 export async function getCategories(options?: { showOnHomepage?: boolean; showInMenu?: boolean }): Promise<any[]> {
   try {
     let endpoint = '/categories?populate=*&sort=order:asc';
-    
+
     if (options?.showOnHomepage !== undefined) {
       endpoint += `&filters[showOnHomepage][$eq]=${options.showOnHomepage}`;
     }
-    
+
     if (options?.showInMenu !== undefined) {
       endpoint += `&filters[showInMenu][$eq]=${options.showInMenu}`;
     }
-    
+
     const response = await fetchAPI<{ data: any[] }>(endpoint);
     return response.data || [];
   } catch (error) {
@@ -124,9 +124,9 @@ export async function getProducts(params?: {
 }): Promise<{ products: any[]; pagination: any }> {
   try {
     const queryParams = new URLSearchParams();
-    
+
     queryParams.append('populate', '*');
-    
+
     if (params?.limit) {
       queryParams.append('pagination[pageSize]', params.limit.toString());
     }
@@ -149,7 +149,7 @@ export async function getProducts(params?: {
     const response = await fetchAPI<{ data: any[]; meta: any }>(
       `/products?${queryParams.toString()}`
     );
-    
+
     return {
       products: response.data || [],
       pagination: response.meta?.pagination,
@@ -163,7 +163,7 @@ export async function getProducts(params?: {
 export async function getProductBySlug(slug: string): Promise<any | null> {
   try {
     const response = await fetchAPI<{ data: any[] }>(
-      `/products?filters[slug][$eq]=${slug}&populate=image,gallery,category,brand`
+      `/products?filters[slug][$eq]=${slug}&populate=*`
     );
     if (response.data.length === 0) return null;
     return response.data[0];
@@ -181,6 +181,22 @@ export async function getFeaturedProducts(limit: number = 8): Promise<any[]> {
 export async function getProductsByCategory(categorySlug: string, limit: number = 12): Promise<any[]> {
   const { products } = await getProducts({ category: categorySlug, limit });
   return products;
+}
+
+export async function getRelatedProducts(
+  categorySlug: string,
+  excludeId: number,
+  limit: number = 4
+): Promise<any[]> {
+  try {
+    const response = await fetchAPI<{ data: any[] }>(
+      `/products?filters[category][slug][$eq]=${categorySlug}&filters[id][$ne]=${excludeId}&populate=image,brand,category&pagination[pageSize]=${limit}&sort=createdAt:desc`
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Failed to fetch related products:', error);
+    return [];
+  }
 }
 
 // ============================================
@@ -228,6 +244,8 @@ export interface ProductFilters {
   sort?: string;
   page?: number;
   pageSize?: number;
+  specRelation?: string;
+  specFilters?: Record<string, any>;
   [key: string]: any;
 }
 
@@ -242,15 +260,15 @@ export async function getFilteredProducts(filters: ProductFilters): Promise<{
 }> {
   try {
     const queryParams = new URLSearchParams();
-    
+
     // Populate relations
     queryParams.append('populate', '*');
-    
+
     // Category filter
     if (filters.category) {
       queryParams.append('filters[category][slug][$eq]', filters.category);
     }
-    
+
     // Price range
     if (filters.minPrice !== undefined) {
       queryParams.append('filters[price][$gte]', filters.minPrice.toString());
@@ -258,19 +276,38 @@ export async function getFilteredProducts(filters: ProductFilters): Promise<{
     if (filters.maxPrice !== undefined) {
       queryParams.append('filters[price][$lte]', filters.maxPrice.toString());
     }
-    
+
     // In stock filter
     if (filters.inStock) {
       queryParams.append('filters[stock][$gt]', '0');
     }
-    
+
+    // Specification filters (e.g., gpuSpecification.chipManufacturer)
+    if (filters.specRelation && filters.specFilters) {
+      const specRelation = filters.specRelation; // e.g., 'gpuSpecification'
+      
+      Object.entries(filters.specFilters).forEach(([field, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        
+        if (Array.isArray(value) && value.length > 0) {
+          // Multiple values - use $in operator
+          value.forEach((v, index) => {
+            queryParams.append(`filters[${specRelation}][${field}][$in][${index}]`, v);
+          });
+        } else if (!Array.isArray(value)) {
+          // Single value - exact match
+          queryParams.append(`filters[${specRelation}][${field}][$eq]`, String(value));
+        }
+      });
+    }
+
     // Sorting
     if (filters.sort) {
       queryParams.append('sort', filters.sort);
     } else {
       queryParams.append('sort', 'createdAt:desc');
     }
-    
+
     // Pagination
     queryParams.append('pagination[page]', (filters.page || 1).toString());
     queryParams.append('pagination[pageSize]', (filters.pageSize || 24).toString());
