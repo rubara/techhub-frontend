@@ -16,8 +16,8 @@ interface BrandsSectionProps {
 }
 
 export const BrandsSection: React.FC<BrandsSectionProps> = ({ brands }) => {
-  const { theme, language } = useUIStore();
-  const isDark = theme === 'dark';
+  const { isDark, language } = useUIStore();
+  // isDark already boolean
   const t = translations[language];
 
   return (

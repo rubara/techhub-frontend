@@ -362,3 +362,44 @@ export async function getProductCount(categorySlug: string): Promise<number> {
     return 0;
   }
 }
+
+// ============================================
+// PC BUILDER
+// ============================================
+
+export async function getPcBuildTemplates(): Promise<any[]> {
+  try {
+    const response = await fetchAPI<{ data: any[] }>(
+      '/pc-build-templates?populate=image,gallery&filters[active][$eq]=true&sort=createdAt:desc'
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Failed to fetch PC build templates:', error);
+    return [];
+  }
+}
+
+export async function getPcBuildTemplateBySlug(slug: string): Promise<any | null> {
+  try {
+    const response = await fetchAPI<{ data: any[] }>(
+      `/pc-build-templates?filters[slug][$eq]=${slug}&populate=image,gallery`
+    );
+    if (response.data.length === 0) return null;
+    return response.data[0];
+  } catch (error) {
+    console.error('Failed to fetch PC build template:', error);
+    return null;
+  }
+}
+
+export async function getBuildComponents(templateId: number): Promise<any[]> {
+  try {
+    const response = await fetchAPI<{ data: any[] }>(
+      `/build-components?filters[buildTemplate][id][$eq]=${templateId}&populate=image&sort[0]=category:asc&sort[1]=order:asc`
+    );
+    return response.data || [];
+  } catch (error) {
+    console.error('Failed to fetch build components:', error);
+    return [];
+  }
+}

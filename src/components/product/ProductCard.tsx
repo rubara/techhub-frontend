@@ -19,11 +19,11 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { theme, language } = useUIStore();
+  const { isDark, language } = useUIStore();
   const addToCart = useCartStore((state) => state.addItem);
   const { isInWishlist, toggleItem: toggleWishlist } = useWishlistStore();
   
-  const isDark = theme === 'dark';
+  // isDark already boolean
   const t = translations[language];
   const isWishlisted = isInWishlist(product.id);
   

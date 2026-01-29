@@ -11,8 +11,8 @@ import { Logo } from '@/components/ui/Logo';
 import { FacebookIcon, InstagramIcon, TikTokIcon, TwitchIcon } from '@/components/ui/Icons';
 
 export const Footer: React.FC = () => {
-  const { theme, language } = useUIStore();
-  const isDark = theme === 'dark';
+  const { isDark, language } = useUIStore();
+  // isDark already boolean
   const t = translations[language];
 
   const footerLinks = [

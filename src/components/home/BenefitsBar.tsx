@@ -9,8 +9,8 @@ import { colors } from '@/lib/colors';
 import { TruckIcon, CheckIcon } from '@/components/ui/Icons';
 
 export const BenefitsBar: React.FC = () => {
-  const { theme, language } = useUIStore();
-  const isDark = theme === 'dark';
+  const { isDark, language } = useUIStore();
+  // isDark already boolean
   const t = translations[language];
 
   const benefits = [

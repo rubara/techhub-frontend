@@ -10,13 +10,13 @@ interface ProvidersProps {
 }
 
 export const Providers: React.FC<ProvidersProps> = ({ children }) => {
-  const { theme } = useUIStore();
+  const { isDark } = useUIStore();
 
-  // Apply theme class to body
+  // Apply isDark class to body
   useEffect(() => {
     document.body.classList.remove('dark', 'light');
-    document.body.classList.add(theme);
-  }, [theme]);
+    document.body.classList.add(isDark ? 'dark' : 'light');
+  }, [isDark]);
 
   return <>{children}</>;
 };

@@ -17,8 +17,8 @@ interface CategoriesProps {
 }
 
 export const Categories: React.FC<CategoriesProps> = ({ categories }) => {
-  const { theme, language } = useUIStore();
-  const isDark = theme === 'dark';
+  const { isDark, language } = useUIStore();
+  // isDark already boolean
   const t = translations[language];
 
   return (
