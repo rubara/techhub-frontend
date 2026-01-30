@@ -1,11 +1,11 @@
 // TechHub.bg - Root Layout
-
 import type { Metadata } from 'next';
 import { Russo_One, Raleway } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { CompareBar } from '@/components/compare';
 
 const russoOne = Russo_One({
   weight: '400',
@@ -51,6 +51,8 @@ export default function RootLayout({
             </main>
             <Footer />
           </div>
+          {/* Compare Bar - Floating at bottom */}
+          <CompareBar />
         </Providers>
       </body>
     </html>

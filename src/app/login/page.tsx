@@ -13,7 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { isDark, language } = useUIStore();
   const { setAuth, setLoading } = useAuthStore();
-  
+
   // Redirect if already authenticated
   useProtectedRoute({ redirectIfAuthenticated: true });
 
@@ -38,7 +38,7 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    const { data, error: loginError } = await login(formData);
+    const { data, error: loginError } = await login(formData.identifier, formData.password);
 
     if (loginError) {
       setError(

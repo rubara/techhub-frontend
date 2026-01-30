@@ -15,7 +15,6 @@ export const SpecificationsTable = ({
   specType,
 }: SpecificationsTableProps) => {
   const { isDark, language } = useUIStore();
-
   const specLabels: SpecConfig = getSpecLabels(specType);
 
   // Filter out null/undefined values and internal fields
@@ -24,7 +23,16 @@ export const SpecificationsTable = ({
       value !== null &&
       value !== undefined &&
       value !== '' &&
-      !['id', 'createdAt', 'updatedAt', 'publishedAt', 'product'].includes(key)
+      ![
+        'id',
+        'documentId',
+        'createdAt',
+        'updatedAt',
+        'publishedAt',
+        'product',
+        'locale',
+        'localizations',
+      ].includes(key)
   );
 
   if (filteredSpecs.length === 0) {

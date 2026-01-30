@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useUIStore } from '@/store';
 import { useAuthStore } from '@/store';
 import { colors } from '@/lib/colors';
-import { getUserOrders, Order } from '@/lib/auth-api';
+import { getOrders, Order } from '@/lib/auth-api';
 import { useProtectedRoute } from '@/hooks/use-protected-route';
 
 export default function OrdersPage() {
@@ -22,7 +22,7 @@ export default function OrdersPage() {
       if (!token) return;
 
       setLoading(true);
-      const { data } = await getUserOrders(token);
+      const { data } = await getOrders(token);
       if (data) {
         setOrders(data);
       }
@@ -90,7 +90,6 @@ export default function OrdersPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
-      {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm mb-6">
         <Link href="/account" style={{ color: colors.forestGreen }}>
           {language === 'bg' ? 'Акаунт' : 'Account'}
@@ -101,7 +100,6 @@ export default function OrdersPage() {
         </span>
       </div>
 
-      {/* Header */}
       <h1
         className="text-2xl font-bold mb-6"
         style={{ color: isDark ? colors.white : colors.midnightBlack }}
@@ -109,7 +107,6 @@ export default function OrdersPage() {
         {language === 'bg' ? 'История на поръчките' : 'Order History'}
       </h1>
 
-      {/* Loading */}
       {loading && (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -122,7 +119,6 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Empty State */}
       {!loading && orders.length === 0 && (
         <div
           className="text-center py-16 rounded-2xl"
@@ -138,10 +134,7 @@ export default function OrdersPage() {
           >
             {language === 'bg' ? 'Нямате поръчки' : 'No orders yet'}
           </h2>
-          <p
-            className="mb-6"
-            style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-          >
+          <p className="mb-6" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
             {language === 'bg'
               ? 'Когато направите поръчка, тя ще се появи тук'
               : 'When you place an order, it will appear here'}
@@ -156,7 +149,6 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Orders List */}
       {!loading && orders.length > 0 && (
         <div className="space-y-4">
           {orders.map((order) => {
@@ -171,7 +163,6 @@ export default function OrdersPage() {
                   border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
                 }}
               >
-                {/* Order Header */}
                 <div
                   className="px-5 py-4 flex flex-wrap items-center justify-between gap-4 border-b"
                   style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
@@ -185,11 +176,14 @@ export default function OrdersPage() {
                         #{order.orderNumber}
                       </p>
                       <p className="text-sm" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
-                        {new Date(order.createdAt).toLocaleDateString(language === 'bg' ? 'bg-BG' : 'en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
+                        {new Date(order.createdAt).toLocaleDateString(
+                          language === 'bg' ? 'bg-BG' : 'en-US',
+                          {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          }
+                        )}
                       </p>
                     </div>
                   </div>
@@ -203,7 +197,6 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                {/* Order Items */}
                 <div className="px-5 py-4">
                   <div className="flex flex-wrap gap-3 mb-4">
                     {order.items.slice(0, 4).map((item, index) => (
@@ -247,7 +240,6 @@ export default function OrdersPage() {
                   </p>
                 </div>
 
-                {/* Order Footer */}
                 <div
                   className="px-5 py-4 flex flex-wrap items-center justify-between gap-4 border-t"
                   style={{
@@ -263,7 +255,12 @@ export default function OrdersPage() {
                       <p
                         className="text-sm font-medium"
                         style={{
-                          color: order.paymentStatus === 'paid' ? colors.forestGreen : isDark ? colors.white : colors.midnightBlack,
+                          color:
+                            order.paymentStatus === 'paid'
+                              ? colors.forestGreen
+                              : isDark
+                              ? colors.white
+                              : colors.midnightBlack,
                         }}
                       >
                         {getPaymentStatusLabel(order.paymentStatus)}
@@ -277,7 +274,14 @@ export default function OrdersPage() {
                         className="flex items-center gap-1 text-sm font-medium"
                         style={{ color: colors.forestGreen }}
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                           <polyline points="14 2 14 8 20 8" />
                           <line x1="16" y1="13" x2="8" y2="13" />
@@ -293,15 +297,12 @@ export default function OrdersPage() {
                       <p className="text-xs" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
                         {language === 'bg' ? 'Общо' : 'Total'}
                       </p>
-                      <p
-                        className="text-lg font-bold"
-                        style={{ color: colors.forestGreen }}
-                      >
+                      <p className="text-lg font-bold" style={{ color: colors.forestGreen }}>
                         {order.totalAmount.toFixed(2)} лв.
                       </p>
                     </div>
                     <Link
-                      href={`/account/orders/${order.id}`}
+                      href={`/account/orders/${order.documentId}`}
                       className="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
                       style={{
                         background: colors.forestGreen,

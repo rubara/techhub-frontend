@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUIStore, useAuthStore } from '@/store';
 import { colors } from '@/lib/colors';
-import { getUserOrders, getMe, Order } from '@/lib/auth-api';
+import { getOrders, getMe, Order } from '@/lib/auth-api';
 import { useProtectedRoute } from '@/hooks/use-protected-route';
 
 export default function AccountPage() {
@@ -21,7 +21,7 @@ export default function AccountPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       if (!token) return;
-      
+
       const { data } = await getMe(token);
       if (data) {
         updateUser(data);
@@ -31,15 +31,15 @@ export default function AccountPage() {
     if (isReady && token) {
       fetchUserData();
     }
-  }, [token, isReady]);
+  }, [token, isReady, updateUser]);
 
   // Fetch recent orders
   useEffect(() => {
     const fetchOrders = async () => {
       if (!token) return;
-      
+
       setLoadingOrders(true);
-      const { data } = await getUserOrders(token);
+      const { data } = await getOrders(token);
       if (data) {
         setRecentOrders(data.slice(0, 3));
       }
@@ -379,7 +379,7 @@ export default function AccountPage() {
               return (
                 <Link
                   key={order.id}
-                  href={`/account/orders/${order.id}`}
+                  href={`/account/orders/${order.documentId}`}
                   className="flex items-center justify-between p-4 rounded-xl transition-colors"
                   style={{
                     background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',

@@ -113,10 +113,10 @@ export default function CheckoutPage() {
 
   // Redirect if empty cart
   useEffect(() => {
-    if (items.length === 0) {
-      router.push('/cart');
-    }
-  }, [items, router]);
+  if (items.length === 0 && !isSubmitting) {
+    router.push('/cart');
+  }
+}, [items, router, isSubmitting]);
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -185,7 +185,9 @@ export default function CheckoutPage() {
 
     const orderData = {
       items: items.map((item) => ({
+        id: item.id,
         productId: item.id,
+        slug: item.slug || `product-${item.id}`,
         name: item.name,
         nameBg: item.nameBg,
         price: item.price,
@@ -208,7 +210,7 @@ export default function CheckoutPage() {
     }
 
     clearCart();
-    router.push(`/checkout/success?order=${data?.orderNumber}`);
+    router.push(`/checkout/success?order=${data?.orderNumber}&id=${data?.documentId}`);
   };
 
   const inputStyle = {

@@ -24,7 +24,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { isDark, language } = useUIStore();
   const { setAuth, setLoading } = useAuthStore();
-  
+
   // Redirect if already authenticated
   useProtectedRoute({ redirectIfAuthenticated: true });
 
@@ -74,7 +74,7 @@ export default function RegisterPage() {
     return () => {
       turnstileWidgetId.current = null;
     };
-  }, [isDark]);
+  }, [isDark, errors.captcha]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -130,16 +130,15 @@ export default function RegisterPage() {
     setIsSubmitting(true);
     setLoading(true);
 
-    // Verify turnstile token on server (optional but recommended)
-    // For now, we'll just include it in the registration
-
-    const { data, error } = await register({
-      username: formData.email,
-      email: formData.email,
-      password: formData.password,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-    });
+    const { data, error } = await register(
+      formData.email,
+      formData.email,
+      formData.password,
+      {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+      }
+    );
 
     if (error) {
       if (error.message.includes('already taken') || error.message.includes('unique')) {
@@ -151,13 +150,13 @@ export default function RegisterPage() {
           general: error.message,
         });
       }
-      
+
       // Reset Turnstile on error
       if (turnstileWidgetId.current && window.turnstile) {
         window.turnstile.reset(turnstileWidgetId.current);
         setTurnstileToken(null);
       }
-      
+
       setIsSubmitting(false);
       setLoading(false);
       return;

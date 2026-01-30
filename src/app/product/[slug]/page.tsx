@@ -17,6 +17,7 @@ import {
   RelatedProducts,
 } from '@/components/product';
 import { ChevronRightIcon } from '@/components/ui';
+import { CompareButton } from '@/components/compare';
 
 export default function ProductPage() {
   const params = useParams();
@@ -225,6 +226,27 @@ export default function ProductPage() {
           />
 
           <ProductActions product={product} />
+
+          {/* Compare Button */}
+          <div className="mt-4">
+            <CompareButton
+              product={{
+                id: product.id,
+                name: product.name,
+                nameBg: product.nameBg,
+                slug: product.slug,
+                price: product.price,
+                originalPrice: product.originalPrice,
+                image: product.image,
+                brand: product.brand,
+                specs: specs,
+              }}
+              categoryId={product.category?.id}
+              categorySlug={product.category?.slug}
+              categoryName={language === 'bg' ? product.category?.nameBg : product.category?.name}
+              variant="full"
+            />
+          </div>
 
           {/* Payment Methods Placeholder - TODO: Implement later */}
           <div

@@ -1,4 +1,5 @@
-// Auth API Functions - lib/auth-api.ts
+// TechHub.bg - Authentication & Order API Functions
+// Strapi v5 Compatible
 
 const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
 
@@ -6,22 +7,9 @@ const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'
 // TYPES
 // ============================================
 
-export interface LoginCredentials {
-  identifier: string; // email or username
-  password: string;
-}
-
-export interface RegisterData {
-  username: string;
-  email: string;
-  password: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-}
-
 export interface User {
   id: number;
+  documentId?: string;
   username: string;
   email: string;
   firstName?: string;
@@ -38,66 +26,164 @@ export interface AuthResponse {
   user: User;
 }
 
-export interface ApiError {
-  message: string;
-  status?: number;
+export interface OrderItem {
+  id: number;
+  name: string;
+  nameBg?: string;
+  slug: string;
+  price: number;
+  quantity: number;
+  image?: string;
+}
+
+export interface ShippingAddress {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  notes?: string;
+}
+
+export interface InvoiceDetails {
+  companyName: string;
+  eik?: string;
+  vatNumber?: string;
+  mol?: string;
+  address: string;
+  city?: string;
+}
+
+export interface OrderData {
+  items: OrderItem[];
+  totalAmount: number;
+  shippingAddress: ShippingAddress;
+  paymentMethod: string;
+  wantsInvoice: boolean;
+  invoiceDetails?: InvoiceDetails;
+}
+
+export interface Invoice {
+  id: number;
+  documentId?: string;
+  invoiceNumber: string;
+  issuedDate: string;
+  buyerName: string;
+  buyerEik?: string;
+  buyerVatNumber?: string;
+  buyerMol?: string;
+  buyerAddress: string;
+  buyerCity?: string;
+  items: OrderItem[];
+  subtotal: number;
+  vatAmount: number;
+  totalAmount: number;
+  invoiceStatus: string;
+  pdfFile?: {
+    url: string;
+  };
+}
+
+export interface Order {
+  id: number;
+  documentId?: string;
+  orderNumber: string;
+  status: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  totalAmount: number;
+  items: OrderItem[];
+  shippingAddress: ShippingAddress;
+  wantsInvoice: boolean;
+  invoice?: Invoice;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface OrderResponse {
+  id: number;
+  documentId?: string;
+  orderNumber: string;
+}
+
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+function generateOrderNumber(): string {
+  const date = new Date();
+  const year = date.getFullYear().toString().slice(-2);
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return `TH${year}${month}${day}-${random}`;
+}
+
+function generateInvoiceNumber(): string {
+  const date = new Date();
+  const year = date.getFullYear();
+  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+  return `INV-${year}-${random}`;
 }
 
 // ============================================
-// AUTHENTICATION
+// AUTHENTICATION FUNCTIONS
 // ============================================
 
-// Login
-export async function login(credentials: LoginCredentials): Promise<{ data?: AuthResponse; error?: ApiError }> {
+export async function login(
+  identifier: string,
+  password: string
+): Promise<{ data: AuthResponse | null; error: { message: string } | null }> {
   try {
     const response = await fetch(`${STRAPI_URL}/api/auth/local`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(credentials),
+      body: JSON.stringify({ identifier, password }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
       return {
-        error: {
-          message: data.error?.message || 'Login failed',
-          status: response.status,
-        },
+        data: null,
+        error: { message: data.error?.message || 'Login failed' },
       };
     }
 
-    // Fetch full user data with custom fields
-    const fullUser = await getMe(data.jwt);
-    if (fullUser.data) {
-      data.user = fullUser.data;
-    }
-
-    return { data };
+    return { data, error: null };
   } catch (error) {
     return {
-      error: {
-        message: 'Network error. Please try again.',
-      },
+      data: null,
+      error: { message: 'Network error. Please try again.' },
     };
   }
 }
 
-// Register
-export async function register(userData: RegisterData): Promise<{ data?: AuthResponse; error?: ApiError }> {
+export async function register(
+  username: string,
+  email: string,
+  password: string,
+  additionalData?: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+  }
+): Promise<{ data: AuthResponse | null; error: { message: string } | null }> {
   try {
-    // Step 1: Register with basic fields only
     const response = await fetch(`${STRAPI_URL}/api/auth/local/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        username: userData.username,
-        email: userData.email,
-        password: userData.password,
+        username,
+        email,
+        password,
       }),
     });
 
@@ -105,46 +191,44 @@ export async function register(userData: RegisterData): Promise<{ data?: AuthRes
 
     if (!response.ok) {
       return {
-        error: {
-          message: data.error?.message || 'Registration failed',
-          status: response.status,
-        },
+        data: null,
+        error: { message: data.error?.message || 'Registration failed' },
       };
     }
 
-    // Step 2: Update user with additional fields
-    if (userData.firstName || userData.lastName || userData.phone) {
-      const updateResponse = await fetch(`${STRAPI_URL}/api/users/${data.user.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${data.jwt}`,
-        },
-        body: JSON.stringify({
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          phone: userData.phone,
-        }),
-      });
+    // Update user with additional data if provided
+    if (additionalData && data.jwt) {
+      try {
+        const updateResponse = await fetch(`${STRAPI_URL}/api/users/${data.user.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${data.jwt}`,
+          },
+          body: JSON.stringify(additionalData),
+        });
 
-      if (updateResponse.ok) {
-        const updatedUser = await updateResponse.json();
-        data.user = updatedUser;
+        if (updateResponse.ok) {
+          const updatedUser = await updateResponse.json();
+          data.user = { ...data.user, ...updatedUser };
+        }
+      } catch (updateError) {
+        console.error('Failed to update user data:', updateError);
       }
     }
 
-    return { data };
+    return { data, error: null };
   } catch (error) {
     return {
-      error: {
-        message: 'Network error. Please try again.',
-      },
+      data: null,
+      error: { message: 'Network error. Please try again.' },
     };
   }
 }
 
-// Get current user with all fields
-export async function getMe(token: string): Promise<{ data?: User; error?: ApiError }> {
+export async function getMe(
+  token: string
+): Promise<{ data: User | null; error: { message: string } | null }> {
   try {
     const response = await fetch(`${STRAPI_URL}/api/users/me`, {
       headers: {
@@ -152,40 +236,28 @@ export async function getMe(token: string): Promise<{ data?: User; error?: ApiEr
       },
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
       return {
-        error: {
-          message: data.error?.message || 'Failed to fetch user',
-          status: response.status,
-        },
+        data: null,
+        error: { message: 'Failed to get user data' },
       };
     }
 
-    return { data };
+    const data = await response.json();
+    return { data, error: null };
   } catch (error) {
     return {
-      error: {
-        message: 'Network error. Please try again.',
-      },
+      data: null,
+      error: { message: 'Network error. Please try again.' },
     };
   }
 }
 
-// Update user profile
 export async function updateProfile(
   token: string,
   userId: number,
-  userData: {
-    firstName?: string;
-    lastName?: string;
-    phone?: string;
-    address?: string;
-    city?: string;
-    postalCode?: string;
-  }
-): Promise<{ data?: User; error?: ApiError }> {
+  userData: Partial<User>
+): Promise<{ data: User | null; error: { message: string } | null }> {
   try {
     const response = await fetch(`${STRAPI_URL}/api/users/${userId}`, {
       method: 'PUT',
@@ -196,124 +268,96 @@ export async function updateProfile(
       body: JSON.stringify(userData),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
+      const errorData = await response.json();
       return {
-        error: {
-          message: data.error?.message || 'Failed to update profile',
-          status: response.status,
-        },
+        data: null,
+        error: { message: errorData.error?.message || 'Failed to update profile' },
       };
     }
 
-    return { data };
+    const data = await response.json();
+    return { data, error: null };
   } catch (error) {
     return {
-      error: {
-        message: 'Network error. Please try again.',
-      },
+      data: null,
+      error: { message: 'Network error. Please try again.' },
     };
   }
 }
 
-// Update email (requires password confirmation)
-export async function updateEmail(
+export async function changePassword(
   token: string,
-  userId: number,
-  newEmail: string,
-  password: string
-): Promise<{ data?: User; error?: ApiError }> {
+  currentPassword: string,
+  newPassword: string
+): Promise<{ success: boolean; error: { message: string } | null }> {
   try {
-    // First verify password by attempting login
+    // First verify current password
+    const meResponse = await fetch(`${STRAPI_URL}/api/users/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!meResponse.ok) {
+      return {
+        success: false,
+        error: { message: 'Failed to verify user' },
+      };
+    }
+
+    const user = await meResponse.json();
+
+    // Try to login with current password to verify
     const loginCheck = await fetch(`${STRAPI_URL}/api/auth/local`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        identifier: newEmail.replace(newEmail, ''), // This won't work, need current email
-        password: password,
+        identifier: user.email,
+        password: currentPassword,
       }),
     });
 
-    // Update email
-    const response = await fetch(`${STRAPI_URL}/api/users/${userId}`, {
+    if (!loginCheck.ok) {
+      return {
+        success: false,
+        error: { message: 'Current password is incorrect' },
+      };
+    }
+
+    // Update password
+    const response = await fetch(`${STRAPI_URL}/api/users/${user.id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        email: newEmail,
-        username: newEmail, // Also update username since we use email as username
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        error: {
-          message: data.error?.message || 'Failed to update email',
-          status: response.status,
-        },
-      };
-    }
-
-    return { data };
-  } catch (error) {
-    return {
-      error: {
-        message: 'Network error. Please try again.',
-      },
-    };
-  }
-}
-
-// Change password
-export async function changePassword(
-  token: string,
-  currentPassword: string,
-  newPassword: string
-): Promise<{ data?: AuthResponse; error?: ApiError }> {
-  try {
-    const response = await fetch(`${STRAPI_URL}/api/auth/change-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        currentPassword,
         password: newPassword,
-        passwordConfirmation: newPassword,
       }),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
       return {
-        error: {
-          message: data.error?.message || 'Failed to change password',
-          status: response.status,
-        },
+        success: false,
+        error: { message: 'Failed to change password' },
       };
     }
 
-    return { data };
+    return { success: true, error: null };
   } catch (error) {
     return {
-      error: {
-        message: 'Network error. Please try again.',
-      },
+      success: false,
+      error: { message: 'Network error. Please try again.' },
     };
   }
 }
 
-// Forgot password
-export async function forgotPassword(email: string): Promise<{ success: boolean; error?: ApiError }> {
+export async function forgotPassword(
+  email: string
+): Promise<{ success: boolean; error: { message: string } | null }> {
   try {
     const response = await fetch(`${STRAPI_URL}/api/auth/forgot-password`, {
       method: 'POST',
@@ -327,29 +371,24 @@ export async function forgotPassword(email: string): Promise<{ success: boolean;
       const data = await response.json();
       return {
         success: false,
-        error: {
-          message: data.error?.message || 'Failed to send reset email',
-          status: response.status,
-        },
+        error: { message: data.error?.message || 'Failed to send reset email' },
       };
     }
 
-    return { success: true };
+    return { success: true, error: null };
   } catch (error) {
     return {
       success: false,
-      error: {
-        message: 'Network error. Please try again.',
-      },
+      error: { message: 'Network error. Please try again.' },
     };
   }
 }
 
-// Reset password
 export async function resetPassword(
   code: string,
-  password: string
-): Promise<{ data?: AuthResponse; error?: ApiError }> {
+  password: string,
+  passwordConfirmation: string
+): Promise<{ data: AuthResponse | null; error: { message: string } | null }> {
   try {
     const response = await fetch(`${STRAPI_URL}/api/auth/reset-password`, {
       method: 'POST',
@@ -359,7 +398,7 @@ export async function resetPassword(
       body: JSON.stringify({
         code,
         password,
-        passwordConfirmation: password,
+        passwordConfirmation,
       }),
     });
 
@@ -367,94 +406,23 @@ export async function resetPassword(
 
     if (!response.ok) {
       return {
-        error: {
-          message: data.error?.message || 'Failed to reset password',
-          status: response.status,
-        },
+        data: null,
+        error: { message: data.error?.message || 'Failed to reset password' },
       };
     }
 
-    return { data };
+    return { data, error: null };
   } catch (error) {
     return {
-      error: {
-        message: 'Network error. Please try again.',
-      },
+      data: null,
+      error: { message: 'Network error. Please try again.' },
     };
   }
 }
 
 // ============================================
-// ORDERS
+// ORDER FUNCTIONS
 // ============================================
-
-// ============================================
-// ADD THIS TO YOUR auth-api.ts FILE
-// ============================================
-
-interface OrderItem {
-  productId: number;
-  name: string;
-  nameBg?: string;
-  price: number;
-  quantity: number;
-  image?: string;
-}
-
-interface ShippingAddress {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  notes?: string;
-}
-
-interface InvoiceDetails {
-  companyName: string;
-  eik: string;
-  vatNumber?: string;
-  mol?: string;
-  address: string;
-  city?: string;
-}
-
-interface OrderData {
-  items: OrderItem[];
-  shippingAddress: ShippingAddress;
-  paymentMethod: string;
-  totalAmount: number;
-  wantsInvoice: boolean;
-  invoiceDetails?: InvoiceDetails;
-}
-
-interface OrderResponse {
-  id: number;
-  orderNumber: string;
-  orderStatus: string;
-  totalAmount: number;
-  createdAt: string;
-}
-
-// Generate order number: TH250129-1234
-function generateOrderNumber(): string {
-  const date = new Date();
-  const year = date.getFullYear().toString().slice(-2);
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `TH${year}${month}${day}-${random}`;
-}
-
-// Generate invoice number: INV-2025-0001
-function generateInvoiceNumber(): string {
-  const date = new Date();
-  const year = date.getFullYear();
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `INV-${year}-${random}`;
-}
 
 export async function createOrder(
   token: string,
@@ -463,8 +431,8 @@ export async function createOrder(
   try {
     const orderNumber = generateOrderNumber();
 
-    // Get the current user ID
-    const userResponse = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/users/me`, {
+    // Get the current user
+    const userResponse = await fetch(`${STRAPI_URL}/api/users/me`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -482,8 +450,8 @@ export async function createOrder(
     // Prepare order notes from shipping notes
     const orderNotes = orderData.shippingAddress.notes || '';
 
-    // Create the order first
-    const response = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/orders`, {
+    // Create the order with user linked directly using connect syntax
+    const response = await fetch(`${STRAPI_URL}/api/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -500,7 +468,10 @@ export async function createOrder(
           shippingAddress: orderData.shippingAddress,
           wantsInvoice: orderData.wantsInvoice,
           notes: orderNotes,
-          users_permissions_user: user.id,
+          // Link user directly using connect syntax for Strapi v5 link tables
+          users_permissions_user: {
+            connect: [user.id]
+          },
           publishedAt: new Date().toISOString(),
         },
       }),
@@ -516,7 +487,8 @@ export async function createOrder(
       };
     }
 
-    const orderId = result.data.id;
+    const orderId = result.data?.id;
+    const orderDocumentId = result.data?.documentId;
 
     // Create invoice if requested
     if (orderData.wantsInvoice && orderData.invoiceDetails) {
@@ -525,7 +497,7 @@ export async function createOrder(
       const vatAmount = orderData.totalAmount - subtotal;
 
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/invoice-clients`, {
+        const invoiceResponse = await fetch(`${STRAPI_URL}/api/invoice-clients`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -546,12 +518,34 @@ export async function createOrder(
               vatAmount: parseFloat(vatAmount.toFixed(2)),
               totalAmount: orderData.totalAmount,
               invoiceStatus: 'draft',
-              users_permissions_user: user.id,
-              order: orderId,
               publishedAt: new Date().toISOString(),
             },
           }),
         });
+
+        const invoiceResult = await invoiceResponse.json();
+
+        if (invoiceResponse.ok && invoiceResult.data) {
+          const invoiceId = invoiceResult.data.id;
+
+          // FIXED: Link the invoice back to the order using Strapi v5 connect syntax
+          await fetch(`${STRAPI_URL}/api/orders/${orderDocumentId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              data: {
+                invoice_client: {
+                  connect: [invoiceId]
+                }
+              },
+            }),
+          });
+
+          console.log('✅ Invoice linked to order:', invoiceId, '→', orderDocumentId);
+        }
       } catch (invoiceError) {
         console.error('Invoice creation error:', invoiceError);
         // Don't fail the order if invoice creation fails
@@ -561,15 +555,13 @@ export async function createOrder(
     return {
       data: {
         id: orderId,
-        orderNumber: result.data.attributes.orderNumber,
-        orderStatus: result.data.attributes.orderStatus,
-        totalAmount: result.data.attributes.totalAmount,
-        createdAt: result.data.attributes.createdAt,
+        documentId: orderDocumentId,
+        orderNumber,
       },
       error: null,
     };
   } catch (error) {
-    console.error('Order creation error:', error);
+    console.error('Create order error:', error);
     return {
       data: null,
       error: { message: 'Network error. Please try again.' },
@@ -578,165 +570,91 @@ export async function createOrder(
 }
 
 
-// ============================================
-// REPLACE in auth-api.ts - Complete Order types and functions
-// ============================================
-
-export interface OrderInvoice {
-  id: number;
-  invoiceNumber: string;
-  issuedDate: string;
-  buyerName: string;
-  buyerEik?: string;
-  buyerVatNumber?: string;
-  buyerAddress: string;
-  buyerCity?: string;
-  buyerMol?: string;
-  subtotal: number;
-  vatAmount: number;
-  totalAmount: number;
-  invoiceStatus: 'draft' | 'issued' | 'paid' | 'cancelled';
-  pdfFile?: {
-    url: string;
-  };
-}
-
-export interface Order {
-  id: number;
-  orderNumber: string;
-  orderStatus: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  paymentMethod: string;
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
-  totalAmount: number;
-  items: {
-    productId: number;
-    name: string;
-    nameBg?: string;
-    price: number;
-    quantity: number;
-    image?: string;
-  }[];
-  shippingAddress: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    address: string;
-    city: string;
-    postalCode: string;
-    notes?: string;
-  };
-  wantsInvoice: boolean;
-  invoice?: OrderInvoice;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export async function getUserOrders(
+export async function getOrders(
   token: string
 ): Promise<{ data: Order[] | null; error: { message: string } | null }> {
   try {
-    const userResponse = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/users/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const userResponse = await fetch(`${STRAPI_URL}/api/users/me`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
-
+    
     if (!userResponse.ok) {
-      return {
-        data: null,
-        error: { message: 'Failed to get user information' },
-      };
+      return { data: null, error: { message: 'Failed to get user information' } };
     }
-
+    
     const user = await userResponse.json();
 
+    // Use the exact populate syntax we tested and know works
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_URL}/api/orders?filters[users_permissions_user][id][$eq]=${user.id}&sort=createdAt:desc&populate[invoice_client][populate]=pdfFile`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      `${STRAPI_URL}/api/orders?sort[0]=createdAt:desc&populate=users_permissions_user&populate=invoice_client`,
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
     if (!response.ok) {
-      return {
-        data: null,
-        error: { message: 'Failed to fetch orders' },
-      };
+      console.error('Failed to fetch orders:', response.status);
+      return { data: null, error: { message: 'Failed to fetch orders' } };
     }
 
     const result = await response.json();
 
-    const orders: Order[] = result.data.map((item: any) => {
-      const invoiceData = item.attributes.invoice_client?.data;
-      let invoice: OrderInvoice | undefined;
+    // Map and filter orders for current user
+    const orders: Order[] = (result.data || [])
+      .filter((item: any) => {
+        // Only show orders linked to current user
+        return item.users_permissions_user && item.users_permissions_user.id === user.id;
+      })
+      .map((item: any) => {
+        const invoiceData = item.invoice_client;
 
-      if (invoiceData) {
-        const inv = invoiceData.attributes;
-        invoice = {
-          id: invoiceData.id,
-          invoiceNumber: inv.invoiceNumber,
-          issuedDate: inv.issuedDate,
-          buyerName: inv.buyerName,
-          buyerEik: inv.buyerEik,
-          buyerVatNumber: inv.buyerVatNumber,
-          buyerAddress: inv.buyerAddress,
-          buyerCity: inv.buyerCity,
-          buyerMol: inv.buyerMol,
-          subtotal: inv.subtotal,
-          vatAmount: inv.vatAmount,
-          totalAmount: inv.totalAmount,
-          invoiceStatus: inv.invoiceStatus,
-          pdfFile: inv.pdfFile?.data ? {
-            url: inv.pdfFile.data.attributes.url.startsWith('http')
-              ? inv.pdfFile.data.attributes.url
-              : `${process.env.NEXT_PUBLIC_STRAPI_URL}${inv.pdfFile.data.attributes.url}`,
+        return {
+          id: item.id,
+          documentId: item.documentId,
+          orderNumber: item.orderNumber,
+          status: item.orderStatus || 'pending',
+          paymentMethod: item.paymentMethod,
+          paymentStatus: item.paymentStatus || 'pending',
+          totalAmount: parseFloat(item.totalAmount) || 0,
+          items: item.items || [],
+          shippingAddress: item.shippingAddress || {},
+          wantsInvoice: item.wantsInvoice || false,
+          invoice: invoiceData ? {
+            id: invoiceData.id,
+            documentId: invoiceData.documentId,
+            invoiceNumber: invoiceData.invoiceNumber,
+            issuedDate: invoiceData.issuedDate,
+            buyerName: invoiceData.buyerName,
+            buyerEik: invoiceData.buyerEik,
+            buyerVatNumber: invoiceData.buyerVatNumber,
+            buyerMol: invoiceData.buyerMol,
+            buyerAddress: invoiceData.buyerAddress,
+            buyerCity: invoiceData.buyerCity,
+            items: invoiceData.items || [],
+            subtotal: parseFloat(invoiceData.subtotal) || 0,
+            vatAmount: parseFloat(invoiceData.vatAmount) || 0,
+            totalAmount: parseFloat(invoiceData.totalAmount) || 0,
+            invoiceStatus: invoiceData.invoiceStatus,
+            pdfFile: invoiceData.pdfFile,
           } : undefined,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
         };
-      }
+      });
 
-      return {
-        id: item.id,
-        orderNumber: item.attributes.orderNumber,
-        orderStatus: item.attributes.orderStatus,
-        status: item.attributes.orderStatus,
-        paymentMethod: item.attributes.paymentMethod,
-        paymentStatus: item.attributes.paymentStatus,
-        totalAmount: item.attributes.totalAmount,
-        items: item.attributes.items || [],
-        shippingAddress: item.attributes.shippingAddress || {},
-        wantsInvoice: item.attributes.wantsInvoice || false,
-        invoice,
-        notes: item.attributes.notes,
-        createdAt: item.attributes.createdAt,
-        updatedAt: item.attributes.updatedAt,
-      };
-    });
-
-    return {
-      data: orders,
-      error: null,
-    };
+    return { data: orders, error: null };
   } catch (error) {
     console.error('Get orders error:', error);
-    return {
-      data: null,
-      error: { message: 'Network error. Please try again.' },
-    };
+    return { data: null, error: { message: 'Network error. Please try again.' } };
   }
 }
 
 export async function getOrderById(
   token: string,
-  orderId: number
+  orderId: string | number // Can accept either documentId or numeric id
 ): Promise<{ data: Order | null; error: { message: string } | null }> {
   try {
+    // Use correct populate syntax that we know works
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_URL}/api/orders/${orderId}?populate[invoice_client][populate]=pdfFile`,
+      `${STRAPI_URL}/api/orders/${orderId}?populate=users_permissions_user&populate=invoice_client`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -745,6 +663,7 @@ export async function getOrderById(
     );
 
     if (!response.ok) {
+      console.error('Failed to fetch order:', response.status);
       return {
         data: null,
         error: { message: 'Failed to fetch order' },
@@ -754,59 +673,207 @@ export async function getOrderById(
     const result = await response.json();
     const item = result.data;
 
-    const invoiceData = item.attributes.invoice_client?.data;
-    let invoice: OrderInvoice | undefined;
-
-    if (invoiceData) {
-      const inv = invoiceData.attributes;
-      invoice = {
-        id: invoiceData.id,
-        invoiceNumber: inv.invoiceNumber,
-        issuedDate: inv.issuedDate,
-        buyerName: inv.buyerName,
-        buyerEik: inv.buyerEik,
-        buyerVatNumber: inv.buyerVatNumber,
-        buyerAddress: inv.buyerAddress,
-        buyerCity: inv.buyerCity,
-        buyerMol: inv.buyerMol,
-        subtotal: inv.subtotal,
-        vatAmount: inv.vatAmount,
-        totalAmount: inv.totalAmount,
-        invoiceStatus: inv.invoiceStatus,
-        pdfFile: inv.pdfFile?.data ? {
-          url: inv.pdfFile.data.attributes.url.startsWith('http')
-            ? inv.pdfFile.data.attributes.url
-            : `${process.env.NEXT_PUBLIC_STRAPI_URL}${inv.pdfFile.data.attributes.url}`,
-        } : undefined,
+    if (!item) {
+      return {
+        data: null,
+        error: { message: 'Order not found' },
       };
     }
 
+    const invoiceData = item.invoice_client;
+
     const order: Order = {
       id: item.id,
-      orderNumber: item.attributes.orderNumber,
-      orderStatus: item.attributes.orderStatus,
-      status: item.attributes.orderStatus,
-      paymentMethod: item.attributes.paymentMethod,
-      paymentStatus: item.attributes.paymentStatus,
-      totalAmount: item.attributes.totalAmount,
-      items: item.attributes.items || [],
-      shippingAddress: item.attributes.shippingAddress || {},
-      wantsInvoice: item.attributes.wantsInvoice || false,
-      invoice,
-      notes: item.attributes.notes,
-      createdAt: item.attributes.createdAt,
-      updatedAt: item.attributes.updatedAt,
+      documentId: item.documentId,
+      orderNumber: item.orderNumber,
+      status: item.orderStatus || 'pending',
+      paymentMethod: item.paymentMethod,
+      paymentStatus: item.paymentStatus || 'pending',
+      totalAmount: parseFloat(item.totalAmount) || 0,
+      items: item.items || [],
+      shippingAddress: item.shippingAddress || {},
+      wantsInvoice: item.wantsInvoice || false,
+      invoice: invoiceData ? {
+        id: invoiceData.id,
+        documentId: invoiceData.documentId,
+        invoiceNumber: invoiceData.invoiceNumber,
+        issuedDate: invoiceData.issuedDate,
+        buyerName: invoiceData.buyerName,
+        buyerEik: invoiceData.buyerEik,
+        buyerVatNumber: invoiceData.buyerVatNumber,
+        buyerMol: invoiceData.buyerMol,
+        buyerAddress: invoiceData.buyerAddress,
+        buyerCity: invoiceData.buyerCity,
+        items: invoiceData.items || [],
+        subtotal: parseFloat(invoiceData.subtotal) || 0,
+        vatAmount: parseFloat(invoiceData.vatAmount) || 0,
+        totalAmount: parseFloat(invoiceData.totalAmount) || 0,
+        invoiceStatus: invoiceData.invoiceStatus,
+        pdfFile: invoiceData.pdfFile,
+      } : undefined,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
     };
 
-    return {
-      data: order,
-      error: null,
-    };
+    return { data: order, error: null };
   } catch (error) {
-    console.error('Get order error:', error);
+    console.error('Get order by ID error:', error);
     return {
       data: null,
       error: { message: 'Network error. Please try again.' },
     };
+  }
+}
+
+// ============================================
+// INVOICE PDF FUNCTIONS
+// ============================================
+
+export async function generateInvoicePDF(
+  token: string,
+  params: {
+    invoiceId: number;
+    invoiceNumber: string;
+    issuedDate: string;
+    buyer: {
+      name: string;
+      eik?: string;
+      vatNumber?: string;
+      mol?: string;
+      address: string;
+      city?: string;
+    };
+    items: {
+      name: string;
+      nameBg?: string;
+      quantity: number;
+      price: number;
+    }[];
+    subtotal: number;
+    vatAmount: number;
+    total: number;
+    paymentMethod: string;
+    orderNumber?: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Step 1: Generate PDF via our API route
+    const pdfResponse = await fetch('/api/invoice/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        invoiceNumber: params.invoiceNumber,
+        issuedDate: params.issuedDate,
+        buyer: params.buyer,
+        items: params.items,
+        subtotal: params.subtotal,
+        vatAmount: params.vatAmount,
+        total: params.total,
+        paymentMethod: params.paymentMethod,
+        orderNumber: params.orderNumber,
+      }),
+    });
+
+    if (!pdfResponse.ok) {
+      return { success: false, error: 'Failed to generate PDF' };
+    }
+
+    // Step 2: Get PDF as blob
+    const pdfBlob = await pdfResponse.blob();
+
+    // Step 3: Upload to Strapi media library
+    const formData = new FormData();
+    formData.append('files', pdfBlob, `invoice-${params.invoiceNumber}.pdf`);
+    formData.append('ref', 'api::invoice-client.invoice-client');
+    formData.append('refId', params.invoiceId.toString());
+    formData.append('field', 'pdfFile');
+
+    const uploadResponse = await fetch(`${STRAPI_URL}/api/upload`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!uploadResponse.ok) {
+      console.error('Upload failed:', await uploadResponse.text());
+      return { success: false, error: 'Failed to upload PDF to server' };
+    }
+
+    // Step 4: Update invoice status to 'issued'
+    await fetch(`${STRAPI_URL}/api/invoice-clients/${params.invoiceId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        data: {
+          invoiceStatus: 'issued',
+        },
+      }),
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Invoice generation error:', error);
+    return { success: false, error: 'Network error' };
+  }
+}
+
+export async function downloadInvoicePDF(params: {
+  invoiceNumber: string;
+  issuedDate: string;
+  buyer: {
+    name: string;
+    eik?: string;
+    vatNumber?: string;
+    mol?: string;
+    address: string;
+    city?: string;
+  };
+  items: {
+    name: string;
+    nameBg?: string;
+    quantity: number;
+    price: number;
+  }[];
+  subtotal: number;
+  vatAmount: number;
+  total: number;
+  paymentMethod: string;
+  orderNumber?: string;
+}): Promise<void> {
+  try {
+    const response = await fetch('/api/invoice/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate PDF');
+    }
+
+    // Get the PDF blob
+    const blob = await response.blob();
+
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoice-${params.invoiceNumber}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Download error:', error);
+    throw error;
   }
 }

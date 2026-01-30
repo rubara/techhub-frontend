@@ -98,6 +98,21 @@ const translations = {
     subscribe: 'Subscribe',
     emailPlaceholder: 'Enter your email',
     limited: 'Limited',
+    compare: 'Compare',
+    addToCompare: 'Add to Compare',
+    removeFromCompare: 'Remove from Compare',
+    compareProducts: 'Compare Products',
+    clearAll: 'Clear All',
+    maxCompareItems: 'Maximum 4 products',
+    sameCategoryOnly: 'Same category only',
+    highlightDifferences: 'Highlight differences',
+    lowestPrice: 'Lowest Price',
+    specifications: 'Specifications',
+    hot: 'HOT',
+    trending: 'Trending',
+    trendingNow: 'Trending Now',
+    new: 'NEW',
+    sale: 'SALE',
   },
   bg: {
     search: 'Търсене',
@@ -189,6 +204,21 @@ const translations = {
     subscribe: 'Абонирай се',
     emailPlaceholder: 'Въведете имейл',
     limited: 'Ограничено',
+    compare: 'Сравни',
+    addToCompare: 'Добави за сравнение',
+    removeFromCompare: 'Премахни от сравнение',
+    compareProducts: 'Сравнение на продукти',
+    clearAll: 'Изчисти всички',
+    maxCompareItems: 'Максимум 4 продукта',
+    sameCategoryOnly: 'Само от една категория',
+    highlightDifferences: 'Покажи разликите',
+    lowestPrice: 'Най-ниска цена',
+    specifications: 'Спецификации',
+    hot: 'ХИТ',
+    trending: 'Актуални',
+    trendingNow: 'Актуални сега',
+    new: 'НОВО',
+    sale: 'ПРОМО',
   },
 };
 
@@ -207,8 +237,7 @@ interface UIStore {
   isUserMenuOpen: boolean;
   isMobileMenuOpen: boolean;
   isSearchOpen: boolean;
-  
-  // Actions
+
   toggleTheme: () => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setLanguage: (lang: Language) => void;
@@ -268,7 +297,6 @@ export const useUIStore = create<UIStore>()(
         language: state.language,
       }),
       onRehydrateStorage: () => (state) => {
-        // Update translations after rehydration
         if (state) {
           state.t = translations[state.language];
         }
@@ -300,7 +328,6 @@ interface AuthStore {
   isLoading: boolean;
   isAuthenticated: boolean;
 
-  // Actions
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setAuth: (user: User, token: string) => void;
@@ -351,18 +378,15 @@ interface CartItem {
   slug: string;
   price: number;
   quantity: number;
-  image?: any; // Flexible to accept Strapi image format
+  image?: any;
   stock?: number;
 }
 
 interface CartStore {
   items: CartItem[];
-
-  // Computed
   totalItems: number;
   totalPrice: number;
 
-  // Actions
   addItem: (product: any, quantity?: number) => void;
   removeItem: (productId: number) => void;
   updateQuantity: (productId: number, quantity: number) => void;
@@ -377,21 +401,17 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
 
-      // Computed: Total number of items
       get totalItems() {
         return get().items.reduce((sum, item) => sum + item.quantity, 0);
       },
 
-      // Computed: Total price
       get totalPrice() {
         return get().items.reduce((sum, item) => sum + item.price * item.quantity, 0);
       },
 
-      // Add item to cart
       addItem: (product: any, quantity = 1) =>
         set((state) => {
           const existingItem = state.items.find((item) => item.id === product.id);
-
           if (existingItem) {
             return {
               items: state.items.map((item) =>
@@ -401,27 +421,21 @@ export const useCartStore = create<CartStore>()(
               ),
             };
           }
-
           return {
             items: [...state.items, { ...product, quantity }],
           };
         }),
 
-      // Remove item from cart
       removeItem: (productId) =>
         set((state) => ({
           items: state.items.filter((item) => item.id !== productId),
         })),
 
-      // Update item quantity
       updateQuantity: (productId, quantity) =>
         set((state) => {
           if (quantity <= 0) {
-            return {
-              items: state.items.filter((item) => item.id !== productId),
-            };
+            return { items: state.items.filter((item) => item.id !== productId) };
           }
-
           return {
             items: state.items.map((item) =>
               item.id === productId ? { ...item, quantity } : item
@@ -429,28 +443,18 @@ export const useCartStore = create<CartStore>()(
           };
         }),
 
-      // Clear entire cart
       clearCart: () => set({ items: [] }),
 
-      // Check if product is in cart
-      isInCart: (productId) => {
-        return get().items.some((item) => item.id === productId);
-      },
+      isInCart: (productId) => get().items.some((item) => item.id === productId),
 
-      // Get quantity of specific item
       getItemQuantity: (productId) => {
         const item = get().items.find((item) => item.id === productId);
         return item?.quantity || 0;
       },
 
-      // Get total item count
-      getItemCount: () => {
-        return get().items.reduce((sum, item) => sum + item.quantity, 0);
-      },
+      getItemCount: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
     }),
-    {
-      name: 'techhub-cart',
-    }
+    { name: 'techhub-cart' }
   )
 );
 
@@ -465,13 +469,13 @@ interface WishlistItem {
   slug: string;
   price: number;
   originalPrice?: number;
-  image?: any; // Flexible to accept Strapi image format
+  image?: any;
+  stock?: number;
 }
 
 interface WishlistStore {
   items: WishlistItem[];
 
-  // Actions
   addItem: (product: any) => void;
   removeItem: (productId: number) => void;
   clearWishlist: () => void;
@@ -486,66 +490,131 @@ export const useWishlistStore = create<WishlistStore>()(
     (set, get) => ({
       items: [],
 
-      // Add item to wishlist
       addItem: (product: any) =>
         set((state) => {
           if (state.items.some((item) => item.id === product.id)) {
             return state;
           }
-          return {
-            items: [...state.items, product],
-          };
+          return { items: [...state.items, product] };
         }),
 
-      // Remove item from wishlist
       removeItem: (productId) =>
         set((state) => ({
           items: state.items.filter((item) => item.id !== productId),
         })),
 
-      // Clear entire wishlist
       clearWishlist: () => set({ items: [] }),
 
-      // Check if product is in wishlist
-      isInWishlist: (productId) => {
-        return get().items.some((item) => item.id === productId);
-      },
+      isInWishlist: (productId) => get().items.some((item) => item.id === productId),
 
-      // Toggle item in wishlist
       toggleWishlist: (product: any) =>
         set((state) => {
           const exists = state.items.some((item) => item.id === product.id);
           if (exists) {
-            return {
-              items: state.items.filter((item) => item.id !== product.id),
-            };
+            return { items: state.items.filter((item) => item.id !== product.id) };
           }
-          return {
-            items: [...state.items, product],
-          };
+          return { items: [...state.items, product] };
         }),
 
-      // Alias for toggleWishlist
       toggleItem: (product: any) =>
         set((state) => {
           const exists = state.items.some((item) => item.id === product.id);
           if (exists) {
-            return {
-              items: state.items.filter((item) => item.id !== product.id),
-            };
+            return { items: state.items.filter((item) => item.id !== product.id) };
           }
+          return { items: [...state.items, product] };
+        }),
+
+      getItemCount: () => get().items.length,
+    }),
+    { name: 'techhub-wishlist' }
+  )
+);
+
+// ============================================
+// COMPARE STORE
+// ============================================
+
+interface CompareItem {
+  id: number;
+  name: string;
+  nameBg?: string;
+  slug: string;
+  price: number;
+  originalPrice?: number;
+  image?: any;
+  categoryId?: number;
+  categorySlug?: string;
+  categoryName?: string;
+  specs?: Record<string, any>;
+  brand?: string;
+}
+
+interface CompareStore {
+  items: CompareItem[];
+  maxItems: number;
+  categoryId: number | null;
+
+  addItem: (product: CompareItem) => boolean;
+  removeItem: (productId: number) => void;
+  clearCompare: () => void;
+  isInCompare: (productId: number) => boolean;
+  canAddItem: (categoryId?: number) => boolean;
+  getItemCount: () => number;
+}
+
+export const useCompareStore = create<CompareStore>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      maxItems: 4,
+      categoryId: null,
+
+      addItem: (product: CompareItem) => {
+        const state = get();
+
+        if (state.items.some((item) => item.id === product.id)) {
+          return false;
+        }
+
+        if (state.items.length >= state.maxItems) {
+          return false;
+        }
+
+        if (state.items.length > 0 && state.categoryId !== product.categoryId) {
+          return false;
+        }
+
+        set((s) => ({
+          items: [...s.items, product],
+          categoryId: product.categoryId || s.categoryId,
+        }));
+
+        return true;
+      },
+
+      removeItem: (productId: number) =>
+        set((state) => {
+          const newItems = state.items.filter((item) => item.id !== productId);
           return {
-            items: [...state.items, product],
+            items: newItems,
+            categoryId: newItems.length === 0 ? null : state.categoryId,
           };
         }),
 
-      // Get total item count
-      getItemCount: () => {
-        return get().items.length;
+      clearCompare: () => set({ items: [], categoryId: null }),
+
+      isInCompare: (productId: number) => get().items.some((item) => item.id === productId),
+
+      canAddItem: (categoryId?: number) => {
+        const state = get();
+        if (state.items.length >= state.maxItems) return false;
+        if (state.items.length === 0) return true;
+        return state.categoryId === categoryId;
       },
+
+      getItemCount: () => get().items.length,
     }),
-    {
-      name: 'techhub-wishlist',
-    }
+    { name: 'techhub-compare' }
   )
 );

@@ -1,10 +1,9 @@
 // TechHub.bg - Home Page
-
 import { getHeroSlides, getCategories, getProducts, getBrands } from '@/lib/api';
 import HeroSlider from '@/components/home/HeroSlider';
 import BenefitsBar from '@/components/home/BenefitsBar';
 import Categories from '@/components/home/Categories';
-import ProductGrid from '@/components/home/ProductGrid';
+import { TranslatedProductGrid } from '@/components/home/TranslatedProductGrid';
 import BrandsSection from '@/components/home/BrandsSection';
 
 // Revalidate every 60 seconds
@@ -42,9 +41,10 @@ export default async function HomePage() {
       <Categories categories={categories} />
 
       {/* Trending Products */}
-      <ProductGrid 
+      <TranslatedProductGrid
         products={trendingProducts}
-        title="TRENDING NOW"
+        titleEn="TRENDING NOW"
+        titleBg="АКТУАЛНИ СЕГА"
         viewAllLink="/products"
         columns={4}
       />
@@ -53,9 +53,10 @@ export default async function HomePage() {
       <BrandsSection brands={brands} />
 
       {/* New Arrivals */}
-      <ProductGrid 
+      <TranslatedProductGrid
         products={newProducts}
-        title="NEW ARRIVALS"
+        titleEn="NEW ARRIVALS"
+        titleBg="НОВИ ПРОДУКТИ"
         viewAllLink="/products?sort=newest"
         columns={4}
       />

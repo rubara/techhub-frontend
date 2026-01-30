@@ -12,21 +12,29 @@ import { colors, stockColors, badgeColors } from '@/lib/colors';
 import { formatPrice, getStockStatus } from '@/lib/utils';
 import { getImageUrl } from '@/lib/api';
 import { HeartIcon, CartIcon, StarIcon } from '@/components/ui/Icons';
+import { CompareButton } from '@/components/compare';
 
 interface ProductCardProps {
   product: Product;
+  categoryId?: number;
+  categorySlug?: string;
+  categoryName?: string;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  categoryId,
+  categorySlug,
+  categoryName,
+}) => {
   const [isHovered, setIsHovered] = useState(false);
   const { isDark, language } = useUIStore();
   const addToCart = useCartStore((state) => state.addItem);
   const { isInWishlist, toggleItem: toggleWishlist } = useWishlistStore();
-  
-  // isDark already boolean
+
   const t = translations[language];
   const isWishlisted = isInWishlist(product.id);
-  
+
   const imageUrl = getImageUrl(product.image, '/images/product-placeholder.png');
   const productName = language === 'bg' ? product.nameBg : product.name;
   const stockStatus = getStockStatus(product.stock);
@@ -39,6 +47,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     out: t.outOfStock,
   };
 
+  // Badge translation
+const getBadgeText = (badge: string) => {
+  const upperBadge = badge.toUpperCase();
+  if (upperBadge === 'HOT') return language === 'bg' ? 'ХИТ' : 'HOT';  // Use upperBadge here!
+  if (upperBadge === 'NEW') return language === 'bg' ? 'НОВО' : 'NEW';  // And here!
+  if (upperBadge === 'SALE') return language === 'bg' ? 'ПРОМО' : 'SALE';  // And here!
+  return badge;
+};
+  // Get category from product if not passed as prop
+  const productAny = product as any;
+  const catId = categoryId || productAny.category?.id || productAny.categoryId;
+  const catSlug = categorySlug || productAny.category?.slug || productAny.categorySlug;
+  const catName = categoryName || productAny.category?.name || productAny.category?.nameBg || productAny.categoryName;
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     if (product.stock > 0) {
@@ -48,7 +70,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const handleToggleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
-    toggleWishlist(product.id);
+    toggleWishlist({
+      id: product.id,
+      name: product.name,
+      nameBg: product.nameBg,
+      slug: product.slug,
+      price: product.price,
+      originalPrice: product.oldPrice,
+      image: product.image,
+      stock: product.stock,
+    });
   };
 
   return (
@@ -56,8 +87,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       href={`/product/${product.slug}`}
       className={`
         group relative rounded-2xl overflow-hidden transition-all duration-300
-        ${isDark 
-          ? 'bg-white/[0.03] border border-white/5 hover:border-[#00B553]/50' 
+        ${isDark
+          ? 'bg-white/[0.03] border border-white/5 hover:border-[#00B553]/50'
           : 'bg-white border border-gray-200 hover:border-[#00B553]/50'
         }
         hover:-translate-y-1 hover:shadow-xl
@@ -67,31 +98,53 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     >
       {/* Badge */}
       {product.badge && (
-        <div 
+        <div
           className="absolute top-3 left-3 px-2.5 py-1 rounded-md text-[11px] font-bold font-['Russo_One'] z-10"
-          style={{ 
+          style={{
             backgroundColor: badgeColors[product.badge as keyof typeof badgeColors] || colors.forestGreen,
             color: product.badge === '-13%' ? colors.midnightBlack : colors.white,
           }}
         >
-          {product.badge}
+          {getBadgeText(product.badge)}
         </div>
       )}
 
-      {/* Wishlist Button */}
-      <button
-        onClick={handleToggleWishlist}
-        className={`
-          absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center z-10 transition-all
-          ${isDark ? 'bg-black/50 hover:bg-black/70' : 'bg-white/90 hover:bg-white shadow-md'}
-        `}
-      >
-        <HeartIcon 
-          size={18} 
-          color={isWishlisted ? colors.pink : (isDark ? 'rgba(255,255,255,0.6)' : colors.gray)}
-          filled={isWishlisted}
+      {/* Action Buttons (Wishlist + Compare) */}
+      <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+        {/* Wishlist Button */}
+        <button
+          onClick={handleToggleWishlist}
+          className={`
+            w-9 h-9 rounded-full flex items-center justify-center transition-all
+            ${isDark ? 'bg-black/50 hover:bg-black/70' : 'bg-white/90 hover:bg-white shadow-md'}
+          `}
+        >
+          <HeartIcon
+            size={18}
+            color={isWishlisted ? colors.pink : (isDark ? 'rgba(255,255,255,0.6)' : colors.gray)}
+            filled={isWishlisted}
+          />
+        </button>
+
+        {/* Compare Button */}
+        <CompareButton
+          product={{
+            id: product.id,
+            name: product.name,
+            nameBg: product.nameBg,
+            slug: product.slug,
+            price: product.price,
+            originalPrice: product.oldPrice,
+            image: product.image,
+            brand: productAny.brand,
+            specs: productAny.specifications || productAny.specs,
+          }}
+          categoryId={catId}
+          categorySlug={catSlug}
+          categoryName={catName}
+          variant="icon"
         />
-      </button>
+      </div>
 
       {/* Product Image */}
       <div className={`
@@ -119,11 +172,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       {/* Product Info */}
       <div className="p-4">
         {/* Stock Status */}
-        <div 
+        <div
           className="flex items-center gap-1.5 text-[11px] font-semibold mb-2"
           style={{ color: stockColors[stockStatus] }}
         >
-          <span 
+          <span
             className="w-1.5 h-1.5 rounded-full"
             style={{ backgroundColor: stockColors[stockStatus] }}
           />

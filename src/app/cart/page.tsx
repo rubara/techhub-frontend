@@ -48,7 +48,7 @@ export default function CartPage() {
   };
 
   // Calculate totals
-  const subtotal = totalPrice;
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shipping = subtotal >= 100 ? 0 : 9.99; // Free shipping over 100 BGN
   const total = subtotal + shipping;
   const totalFormatted = formatPrice(total);
@@ -337,30 +337,31 @@ export default function CartPage() {
             </div>
 
             {/* Free Shipping Progress */}
-            {shipping > 0 && (
-              <div className="mb-4">
-                <div
-                  className="text-xs mb-2"
-                  style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-                >
-                  {language === 'bg'
-                    ? `Още ${(100 - subtotal).toFixed(2)} лв. за безплатна доставка`
-                    : `${(100 - subtotal).toFixed(2)} BGN more for free shipping`}
-                </div>
-                <div
-                  className="h-2 rounded-full overflow-hidden"
-                  style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
-                >
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${Math.min((subtotal / 100) * 100, 100)}%`,
-                      background: colors.forestGreen,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
+{/* Free Shipping Progress */}
+{subtotal > 0 && subtotal < 100 && (
+  <div className="mb-4">
+    <div
+      className="text-xs mb-2"
+      style={{ color: isDark ? colors.gray : colors.midnightBlack }}
+    >
+      {language === 'bg'
+        ? `Още ${(100 - subtotal).toFixed(2)} лв. за безплатна доставка`
+        : `${(100 - subtotal).toFixed(2)} BGN more for free shipping`}
+    </div>
+    <div
+      className="h-2 rounded-full overflow-hidden"
+      style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
+    >
+      <div
+        className="h-full rounded-full transition-all"
+        style={{
+          width: `${(subtotal / 100) * 100}%`,
+          background: colors.forestGreen,
+        }}
+      />
+    </div>
+  </div>
+)}                   
 
             {/* Divider */}
             <div

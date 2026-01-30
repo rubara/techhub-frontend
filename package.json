@@ -10,8 +10,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/pdfkit": "^0.17.4",
     "axios": "^1.13.4",
+    "jspdf": "^4.0.0",
     "next": "^14.2.0",
+    "pdfkit": "^0.17.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zustand": "^4.5.0"
