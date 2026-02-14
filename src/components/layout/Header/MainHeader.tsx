@@ -13,6 +13,12 @@ export const MainHeader = () => {
   const { user, logout } = useAuthStore();
   const userMenuRef = useRef<HTMLDivElement>(null);
 
+  // Fix hydration mismatch - only render counts after mount
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -59,7 +65,7 @@ export const MainHeader = () => {
             }}
           >
             <HeartIcon size={22} color={iconColor} />
-            {wishlistCount > 0 && (
+            {mounted && wishlistCount > 0 && (
               <span
                 className="absolute -top-1 -right-1 flex items-center justify-center text-white text-xs font-bold rounded-full"
                 style={{
@@ -83,7 +89,7 @@ export const MainHeader = () => {
             }}
           >
             <CartIcon size={22} color={iconColor} />
-            {cartCount > 0 && (
+            {mounted && cartCount > 0 && (
               <span
                 className="absolute -top-1 -right-1 flex items-center justify-center text-white text-xs font-bold rounded-full"
                 style={{

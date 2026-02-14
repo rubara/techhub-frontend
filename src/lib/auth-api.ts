@@ -21,6 +21,14 @@ export interface User {
   createdAt?: string;
 }
 
+export interface PromoCodeData {
+  code: string;
+  discountPercentage: number;
+  discountAmount: number;
+  finalAmount: number;
+  originalAmount: number;
+}
+
 export interface AuthResponse {
   jwt: string;
   user: User;
@@ -94,6 +102,10 @@ export interface Order {
   paymentMethod: string;
   paymentStatus: string;
   totalAmount: number;
+originalAmount?: number;
+  promoCode?: string | null;
+  promoDiscountPercentage?: number;
+  promoDiscountAmount?: number;
   items: OrderItem[];
   shippingAddress: ShippingAddress;
   wantsInvoice: boolean;
@@ -423,10 +435,9 @@ export async function resetPassword(
 // ============================================
 // ORDER FUNCTIONS
 // ============================================
-
 export async function createOrder(
   token: string,
-  orderData: OrderData
+  orderData: OrderData & { promoCode?: PromoCodeData | null }
 ): Promise<{ data: OrderResponse | null; error: { message: string } | null }> {
   try {
     const orderNumber = generateOrderNumber();
@@ -449,6 +460,13 @@ export async function createOrder(
 
     // Prepare order notes from shipping notes
     const orderNotes = orderData.shippingAddress.notes || '';
+// Calculate amounts with promo
+const promoDiscountAmount = orderData.promoCode?.discountAmount || 0;
+const promoDiscountPercentage = orderData.promoCode?.discountPercentage || 0;
+const finalAmount = orderData.totalAmount; // totalAmount is already after promo
+const originalAmount = orderData.promoCode 
+  ? finalAmount + promoDiscountAmount  // Add back discount to get original
+  : finalAmount;
 
     // Create the order with user linked directly using connect syntax
     const response = await fetch(`${STRAPI_URL}/api/orders`, {
@@ -463,7 +481,11 @@ export async function createOrder(
           orderStatus: 'pending',
           paymentMethod: orderData.paymentMethod,
           paymentStatus: 'pending',
-          totalAmount: orderData.totalAmount,
+originalAmount: originalAmount,
+    totalAmount: finalAmount,
+    promoCode: orderData.promoCode?.code || null,
+    promoDiscountPercentage: promoDiscountPercentage,
+    promoDiscountAmount: promoDiscountAmount,
           items: orderData.items,
           shippingAddress: orderData.shippingAddress,
           wantsInvoice: orderData.wantsInvoice,
@@ -493,7 +515,8 @@ export async function createOrder(
     // Create invoice if requested
     if (orderData.wantsInvoice && orderData.invoiceDetails) {
       const invoiceNumber = generateInvoiceNumber();
-      const subtotal = orderData.totalAmount / 1.2; // Remove 20% VAT
+const subtotal = finalAmount / 1.2;
+
       const vatAmount = orderData.totalAmount - subtotal;
 
       try {
@@ -516,7 +539,8 @@ export async function createOrder(
               items: orderData.items,
               subtotal: parseFloat(subtotal.toFixed(2)),
               vatAmount: parseFloat(vatAmount.toFixed(2)),
-              totalAmount: orderData.totalAmount,
+totalAmount: finalAmount,
+
               invoiceStatus: 'draft',
               publishedAt: new Date().toISOString(),
             },
@@ -690,6 +714,10 @@ export async function getOrderById(
       paymentMethod: item.paymentMethod,
       paymentStatus: item.paymentStatus || 'pending',
       totalAmount: parseFloat(item.totalAmount) || 0,
+originalAmount: item.originalAmount || item.totalAmount,
+    promoCode: item.promoCode || null,
+    promoDiscountPercentage: item.promoDiscountPercentage || 0,
+    promoDiscountAmount: item.promoDiscountAmount || 0,
       items: item.items || [],
       shippingAddress: item.shippingAddress || {},
       wantsInvoice: item.wantsInvoice || false,

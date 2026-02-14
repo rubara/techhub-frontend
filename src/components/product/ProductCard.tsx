@@ -1,6 +1,6 @@
 'use client';
 
-// TechHub.bg - Product Card Component
+// TechHub.bg - Product Card Component - EUR Primary
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -9,10 +9,12 @@ import { Product } from '@/types';
 import { useUIStore, useCartStore, useWishlistStore } from '@/store';
 import { translations } from '@/lib/translations';
 import { colors, stockColors, badgeColors } from '@/lib/colors';
-import { formatPrice, getStockStatus } from '@/lib/utils';
+import { getStockStatus } from '@/lib/utils';
 import { getImageUrl } from '@/lib/api';
 import { HeartIcon, CartIcon, StarIcon } from '@/components/ui/Icons';
 import { CompareButton } from '@/components/compare';
+import { useCurrencySettings } from '@/hooks/useCurrencySettings';
+import { formatPrice } from '@/utils/currency';
 
 interface ProductCardProps {
   product: Product;
@@ -29,6 +31,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const { isDark, language } = useUIStore();
+  const { settings } = useCurrencySettings();
   const addToCart = useCartStore((state) => state.addItem);
   const { isInWishlist, toggleItem: toggleWishlist } = useWishlistStore();
 
@@ -38,8 +41,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const imageUrl = getImageUrl(product.image, '/images/product-placeholder.png');
   const productName = language === 'bg' ? product.nameBg : product.name;
   const stockStatus = getStockStatus(product.stock);
-  const prices = formatPrice(product.price);
-  const oldPrices = product.oldPrice ? formatPrice(product.oldPrice) : null;
+  
+  // EUR pricing with BGN reference
+  const prices = formatPrice(product.price, settings);
+  const oldPrices = product.oldPrice ? formatPrice(product.oldPrice, settings) : null;
 
   const stockLabels = {
     in: t.inStock,
@@ -48,13 +53,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   // Badge translation
-const getBadgeText = (badge: string) => {
-  const upperBadge = badge.toUpperCase();
-  if (upperBadge === 'HOT') return language === 'bg' ? 'ХИТ' : 'HOT';  // Use upperBadge here!
-  if (upperBadge === 'NEW') return language === 'bg' ? 'НОВО' : 'NEW';  // And here!
-  if (upperBadge === 'SALE') return language === 'bg' ? 'ПРОМО' : 'SALE';  // And here!
-  return badge;
-};
+  const getBadgeText = (badge: string) => {
+    const upperBadge = badge.toUpperCase();
+    if (upperBadge === 'HOT') return language === 'bg' ? 'ХИТ' : 'HOT';
+    if (upperBadge === 'NEW') return language === 'bg' ? 'НОВО' : 'NEW';
+    if (upperBadge === 'SALE') return language === 'bg' ? 'ПРОМО' : 'SALE';
+    return badge;
+  };
+
   // Get category from product if not passed as prop
   const productAny = product as any;
   const catId = categoryId || productAny.category?.id || productAny.categoryId;
@@ -209,21 +215,25 @@ const getBadgeText = (badge: string) => {
           ))}
         </div>
 
-        {/* Price - Dual Currency */}
+        {/* Price - EUR Primary, BGN Secondary */}
         <div className="mb-3.5">
           <div className="flex items-center gap-2">
+            {/* Primary Price: EUR */}
             <span className="text-xl font-bold font-['Russo_One'] text-[#00B553]">
-              {prices.bgn} лв
+              {prices.primary}
             </span>
             {oldPrices && (
               <span className={`text-sm line-through ${isDark ? 'text-white/40' : 'text-gray-400'}`}>
-                {oldPrices.bgn} лв
+                {oldPrices.primary}
               </span>
             )}
           </div>
-          <div className={`text-xs mt-0.5 ${isDark ? 'text-white/50' : 'text-gray-500'}`}>
-            ≈ {prices.eur} €
-          </div>
+          {/* Secondary Price: BGN (if enabled) */}
+          {settings.showBGNReference && (
+            <div className={`text-xs mt-0.5 ${isDark ? 'text-white/50' : 'text-gray-500'}`}>
+              {prices.secondary}
+            </div>
+          )}
         </div>
 
         {/* Add to Cart Button */}

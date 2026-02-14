@@ -5,21 +5,25 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useUIStore, useCartStore } from '@/store';
 import { colors } from '@/lib/colors';
+import { PromoCodeInput, PromoCodeData } from '@/components/promo/PromoCodeInput';
+import { useCurrencySettings } from '@/hooks/useCurrencySettings';
+import { formatPrice as formatCurrency } from '@/utils/currency';
 
-// BGN to EUR fixed rate
-const BGN_TO_EUR = 1.95583;
 
 export default function CartPage() {
   const { isDark, language } = useUIStore();
-  const { items, updateQuantity, removeItem, clearCart, totalItems, totalPrice } = useCartStore();
-  
+const { items, updateQuantity, removeItem, clearCart, totalItems, totalPrice, appliedPromo: storePromo, setPromo } = useCartStore();  
   const [removingId, setRemovingId] = useState<number | null>(null);
+const { settings } = useCurrencySettings();
 
-  // Format price in both currencies
-  const formatPrice = (priceBGN: number) => ({
-    bgn: priceBGN.toFixed(2),
-    eur: (priceBGN / BGN_TO_EUR).toFixed(2),
-  });
+const formatPrice = (eurPrice: number) => {
+  const formatted = formatCurrency(eurPrice, settings);
+  return {
+    primary: formatted.primary,
+    secondary: formatted.secondary,
+    display: formatted.display,
+  };
+};
 
   // Get image URL helper
   const getImageUrl = (image?: { url: string } | string): string => {
@@ -47,13 +51,23 @@ export default function CartPage() {
     }, 300);
   };
 
-  // Calculate totals
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shipping = subtotal >= 100 ? 0 : 9.99; // Free shipping over 100 BGN
-  const total = subtotal + shipping;
-  const totalFormatted = formatPrice(total);
-  const subtotalFormatted = formatPrice(subtotal);
-  const shippingFormatted = formatPrice(shipping);
+// Calculate totals
+const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+// Apply promo discount
+const promoDiscount = storePromo ? storePromo.discountAmount : 0;
+const subtotalAfterPromo = subtotal - promoDiscount;
+
+const shipping = subtotalAfterPromo >= 100 ? 0 : 5.00; // Free shipping over €100 EUR
+const total = subtotalAfterPromo + shipping;
+const totalFormatted = formatPrice(total);
+const subtotalFormatted = formatPrice(subtotal);
+const shippingFormatted = formatPrice(shipping);
+
+// Handle promo application
+const handleApplyPromo = (promoData: PromoCodeData | null) => {
+  setPromo(promoData);
+};
 
   // Empty cart state
   if (items.length === 0) {
@@ -168,11 +182,10 @@ export default function CartPage() {
                     </h3>
                   </Link>
                   
-                  {/* Unit Price */}
-                  <p className="text-sm mb-3" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
-                    {price.bgn} лв. / {price.eur} €
-                  </p>
-
+{/* Unit Price */}
+<p className="text-sm mb-3" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+  {formatPrice(item.price).display}
+</p>
                   {/* Quantity Controls */}
                   <div className="flex items-center gap-3">
                     <div
@@ -237,21 +250,23 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                {/* Item Total */}
-                <div className="text-right flex-shrink-0">
-                  <p
-                    className="font-bold text-lg"
-                    style={{ color: colors.forestGreen }}
-                  >
-                    {itemTotal.bgn} лв.
-                  </p>
-                  <p
-                    className="text-sm"
-                    style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-                  >
-                    {itemTotal.eur} €
-                  </p>
-                </div>
+{/* Item Total */}
+<div className="text-right flex-shrink-0">
+  <p
+    className="font-bold text-lg"
+    style={{ color: colors.forestGreen }}
+  >
+    {formatPrice(item.price * item.quantity).primary}
+  </p>
+  {settings.showBGNReference && (
+    <p
+      className="text-xs"
+      style={{ color: isDark ? colors.gray : colors.midnightBlack }}
+    >
+      {formatPrice(item.price * item.quantity).secondary}
+    </p>
+  )}
+</div>
               </div>
             );
           })}
@@ -285,58 +300,96 @@ export default function CartPage() {
             >
               {language === 'bg' ? 'Обобщение' : 'Order Summary'}
             </h2>
+{/* Promo Code Input */}
+<div className="mb-4">
+  <PromoCodeInput
+    orderAmount={subtotal}
+    onApplyPromo={handleApplyPromo}
+    appliedPromo={storePromo}
+  />
+</div>
 
-            {/* Subtotal */}
-            <div className="flex justify-between mb-3">
-              <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
-                {language === 'bg' ? 'Междинна сума' : 'Subtotal'}
-              </span>
-              <div className="text-right">
-                <span
-                  className="font-medium"
-                  style={{ color: isDark ? colors.white : colors.midnightBlack }}
-                >
-                  {subtotalFormatted.bgn} лв.
-                </span>
-                <span
-                  className="text-sm ml-2"
-                  style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-                >
-                  ({subtotalFormatted.eur} €)
-                </span>
-              </div>
-            </div>
 
-            {/* Shipping */}
-            <div className="flex justify-between mb-3">
-              <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
-                {language === 'bg' ? 'Доставка' : 'Shipping'}
-              </span>
-              <div className="text-right">
-                {shipping === 0 ? (
-                  <span className="font-medium" style={{ color: colors.forestGreen }}>
-                    {language === 'bg' ? 'Безплатна' : 'Free'}
-                  </span>
-                ) : (
-                  <>
-                    <span
-                      className="font-medium"
-                      style={{ color: isDark ? colors.white : colors.midnightBlack }}
-                    >
-                      {shippingFormatted.bgn} лв.
-                    </span>
-                    <span
-                      className="text-sm ml-2"
-                      style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-                    >
-                      ({shippingFormatted.eur} €)
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
+{/* Subtotal */}
+<div className="flex justify-between mb-3">
+  <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+    {language === 'bg' ? 'Междинна сума' : 'Subtotal'}
+  </span>
+  <div className="text-right">
+    <span
+      className="font-medium"
+      style={{ color: isDark ? colors.white : colors.midnightBlack }}
+    >
+      {formatPrice(subtotal).primary}
+    </span>
+    {settings.showBGNReference && (
+      <span
+        className="text-sm ml-2"
+        style={{ color: isDark ? colors.gray : colors.midnightBlack }}
+      >
+        ({formatPrice(subtotal).secondary})
+      </span>
+    )}
+  </div>
+</div>
 
-            {/* Free Shipping Progress */}
+
+{/* Promo Discount */}
+{storePromo && (
+  <div className="flex justify-between mb-3">
+    <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+      {language === 'bg' ? 'Промо код' : 'Promo code'} ({storePromo.code})
+    </span>
+    <div className="text-right">
+      <span
+        className="font-medium"
+        style={{ color: colors.forestGreen }}
+      >
+        -{formatPrice(promoDiscount).primary}
+      </span>
+      {settings.showBGNReference && (
+        <span
+          className="text-sm ml-2"
+          style={{ color: isDark ? colors.gray : colors.midnightBlack }}
+        >
+          ({formatPrice(promoDiscount).secondary})
+        </span>
+      )}
+    </div>
+  </div>
+)}
+
+{/* Shipping */}
+<div className="flex justify-between mb-3">
+  <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+    {language === 'bg' ? 'Доставка' : 'Shipping'}
+  </span>
+  <div className="text-right">
+    {shipping === 0 ? (
+      <span className="font-medium" style={{ color: colors.forestGreen }}>
+        {language === 'bg' ? 'Безплатна' : 'Free'}
+      </span>
+    ) : (
+      <>
+        <span
+          className="font-medium"
+          style={{ color: isDark ? colors.white : colors.midnightBlack }}
+        >
+          {formatPrice(shipping).primary}
+        </span>
+        {settings.showBGNReference && (
+          <span
+            className="text-sm ml-2"
+            style={{ color: isDark ? colors.gray : colors.midnightBlack }}
+          >
+            ({formatPrice(shipping).secondary})
+          </span>
+        )}
+      </>
+    )}
+  </div>
+</div>
+
 {/* Free Shipping Progress */}
 {subtotal > 0 && subtotal < 100 && (
   <div className="mb-4">
@@ -345,8 +398,8 @@ export default function CartPage() {
       style={{ color: isDark ? colors.gray : colors.midnightBlack }}
     >
       {language === 'bg'
-        ? `Още ${(100 - subtotal).toFixed(2)} лв. за безплатна доставка`
-        : `${(100 - subtotal).toFixed(2)} BGN more for free shipping`}
+        ? `Още ${formatPrice(100 - subtotal).display} за безплатна доставка`
+        : `${formatPrice(100 - subtotal).display} more for free shipping`}
     </div>
     <div
       className="h-2 rounded-full overflow-hidden"
@@ -361,7 +414,8 @@ export default function CartPage() {
       />
     </div>
   </div>
-)}                   
+)}
+
 
             {/* Divider */}
             <div
@@ -369,29 +423,32 @@ export default function CartPage() {
               style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
             />
 
-            {/* Total */}
-            <div className="flex justify-between mb-6">
-              <span
-                className="font-bold text-lg"
-                style={{ color: isDark ? colors.white : colors.midnightBlack }}
-              >
-                {language === 'bg' ? 'Общо' : 'Total'}
-              </span>
-              <div className="text-right">
-                <p
-                  className="font-bold text-2xl"
-                  style={{ color: colors.forestGreen }}
-                >
-                  {totalFormatted.bgn} лв.
-                </p>
-                <p
-                  className="text-sm"
-                  style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-                >
-                  {totalFormatted.eur} €
-                </p>
-              </div>
-            </div>
+
+{/* Total */}
+<div className="flex justify-between mb-6">
+  <span
+    className="font-bold text-lg"
+    style={{ color: isDark ? colors.white : colors.midnightBlack }}
+  >
+    {language === 'bg' ? 'Общо' : 'Total'}
+  </span>
+  <div className="text-right">
+    <p
+      className="font-bold text-2xl"
+      style={{ color: colors.forestGreen }}
+    >
+      {formatPrice(total).primary}
+    </p>
+    {settings.showBGNReference && (
+      <p
+        className="text-sm"
+        style={{ color: isDark ? colors.gray : colors.midnightBlack }}
+      >
+        {formatPrice(total).secondary}
+      </p>
+    )}
+  </div>
+</div>
 
             {/* Checkout Button */}
             <Link

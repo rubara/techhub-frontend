@@ -7,12 +7,12 @@ import { useRouter } from 'next/navigation';
 import { useUIStore, useAuthStore, useCartStore } from '@/store';
 import { colors } from '@/lib/colors';
 import { createOrder } from '@/lib/auth-api';
+import { PromoCodeInput, PromoCodeData } from '@/components/promo/PromoCodeInput';
+import { useCurrencySettings } from '@/hooks/useCurrencySettings';
+import { formatPrice as formatCurrency } from '@/utils/currency';
 
-// BGN to EUR fixed rate
-const BGN_TO_EUR = 1.95583;
-
-// Shipping cost
-const SHIPPING_COST = 9.99;
+// Shipping cost (in EUR)
+const SHIPPING_COST = 5.00;
 const FREE_SHIPPING_THRESHOLD = 100;
 
 // Payment methods
@@ -67,7 +67,8 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { isDark, language } = useUIStore();
   const { user, token, isAuthenticated } = useAuthStore();
-  const { items, clearCart } = useCartStore();
+  const { items, clearCart, appliedPromo: storePromo, setPromo } = useCartStore();
+const { settings } = useCurrencySettings();
 
   const [step, setStep] = useState(1);
   const [selectedPayment, setSelectedPayment] = useState('cod');
@@ -113,20 +114,29 @@ export default function CheckoutPage() {
 
   // Redirect if empty cart
   useEffect(() => {
-  if (items.length === 0 && !isSubmitting) {
-    router.push('/cart');
-  }
-}, [items, router, isSubmitting]);
+    if (items.length === 0 && !isSubmitting) {
+      router.push('/cart');
+    }
+  }, [items, router, isSubmitting]);
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
-  const total = subtotal + shipping;
 
-  const formatPrice = (price: number) => ({
-    bgn: price.toFixed(2),
-    eur: (price / BGN_TO_EUR).toFixed(2),
-  });
+  // Apply promo discount
+  const promoDiscount = storePromo ? storePromo.discountAmount : 0;
+  const subtotalAfterPromo = subtotal - promoDiscount;
+
+  const shipping = subtotalAfterPromo >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
+  const total = subtotalAfterPromo + shipping;
+
+const formatPrice = (eurPrice: number) => {
+  const formatted = formatCurrency(eurPrice, settings);
+  return {
+    primary: formatted.primary,
+    secondary: formatted.secondary,
+    display: formatted.display,
+  };
+};
 
   const getImageUrl = (image: any): string => {
     if (!image) return '/placeholder-product.svg';
@@ -148,6 +158,10 @@ export default function CheckoutPage() {
 
   const handleInvoiceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInvoiceForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleApplyPromo = (promoData: PromoCodeData | null) => {
+    setPromo(promoData);
   };
 
   const validateShipping = () => {
@@ -199,6 +213,7 @@ export default function CheckoutPage() {
       totalAmount: total,
       wantsInvoice,
       invoiceDetails: wantsInvoice ? invoiceForm : undefined,
+      promoCode: storePromo,
     };
 
     const { data, error } = await createOrder(token, orderData);
@@ -418,18 +433,18 @@ export default function CheckoutPage() {
               <div className="p-6 rounded-2xl" style={{ background: isDark ? 'rgba(255,255,255,0.03)' : colors.white, border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>
                 <h3 className="font-bold mb-4" style={{ color: isDark ? colors.white : colors.midnightBlack }}>{language === 'bg' ? 'Продукти' : 'Items'}</h3>
                 <div className="space-y-3">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg overflow-hidden" style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}>
-                        <Image src={getImageUrl(item.image)} alt={item.name} width={48} height={48} className="w-full h-full object-contain p-1" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium" style={{ color: isDark ? colors.white : colors.midnightBlack }}>{language === 'bg' && item.nameBg ? item.nameBg : item.name}</p>
-                        <p className="text-xs" style={{ color: colors.gray }}>{item.quantity} x {item.price.toFixed(2)} лв.</p>
-                      </div>
-                      <p className="font-semibold" style={{ color: colors.forestGreen }}>{(item.price * item.quantity).toFixed(2)} лв.</p>
-                    </div>
-                  ))}
+{items.map((item) => (
+  <div key={item.id} className="flex items-center gap-3">
+    <div className="w-12 h-12 rounded-lg overflow-hidden" style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}>
+      <Image src={getImageUrl(item.image)} alt={item.name} width={48} height={48} className="w-full h-full object-contain p-1" />
+    </div>
+    <div className="flex-1">
+      <p className="text-sm font-medium" style={{ color: isDark ? colors.white : colors.midnightBlack }}>{language === 'bg' && item.nameBg ? item.nameBg : item.name}</p>
+      <p className="text-xs" style={{ color: colors.gray }}>{item.quantity} x {formatPrice(item.price).primary}</p>
+    </div>
+    <p className="font-semibold" style={{ color: colors.forestGreen }}>{formatPrice(item.price * item.quantity).primary}</p>
+  </div>
+))}
                 </div>
               </div>
 
@@ -465,35 +480,72 @@ export default function CheckoutPage() {
           <div className="sticky top-4 p-6 rounded-2xl" style={{ background: isDark ? 'rgba(255,255,255,0.03)' : colors.white, border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>
             <h3 className="font-bold mb-4" style={{ color: isDark ? colors.white : colors.midnightBlack }}>{language === 'bg' ? 'Обобщение' : 'Summary'}</h3>
 
-            <div className="space-y-2 mb-4">
-              {items.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>{language === 'bg' && item.nameBg ? item.nameBg : item.name} x{item.quantity}</span>
-                  <span style={{ color: isDark ? colors.white : colors.midnightBlack }}>{(item.price * item.quantity).toFixed(2)} лв.</span>
-                </div>
-              ))}
-            </div>
-
+<div className="space-y-2 mb-4">
+  {items.map((item) => (
+    <div key={item.id} className="flex justify-between text-sm">
+      <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>{language === 'bg' && item.nameBg ? item.nameBg : item.name} x{item.quantity}</span>
+      <span style={{ color: isDark ? colors.white : colors.midnightBlack }}>{formatPrice(item.price * item.quantity).primary}</span>
+    </div>
+  ))}
+</div>
             <div className="h-px my-4" style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
 
-            <div className="flex justify-between mb-2">
-              <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>{language === 'bg' ? 'Междинна сума' : 'Subtotal'}</span>
-              <span style={{ color: isDark ? colors.white : colors.midnightBlack }}>{formatPrice(subtotal).bgn} лв.</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>{language === 'bg' ? 'Доставка' : 'Shipping'}</span>
-              <span style={{ color: shipping === 0 ? colors.forestGreen : isDark ? colors.white : colors.midnightBlack }}>{shipping === 0 ? (language === 'bg' ? 'Безплатна' : 'Free') : `${shipping.toFixed(2)} лв.`}</span>
-            </div>
-
-            <div className="h-px my-4" style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
-
-            <div className="flex justify-between">
-              <span className="font-bold" style={{ color: isDark ? colors.white : colors.midnightBlack }}>{language === 'bg' ? 'Общо' : 'Total'}</span>
-              <div className="text-right">
-                <p className="font-bold text-xl" style={{ color: colors.forestGreen }}>{formatPrice(total).bgn} лв.</p>
-                <p className="text-sm" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>{formatPrice(total).eur} €</p>
+            {/* Promo Code Input - Show on payment step */}
+            {step === 3 && (
+              <div className="mb-4">
+                <PromoCodeInput
+                  orderAmount={subtotal}
+                  onApplyPromo={handleApplyPromo}
+                  appliedPromo={storePromo}
+                />
               </div>
-            </div>
+            )}
+
+            {/* Show promo discount in summary if applied */}
+{storePromo && (
+  <>
+    <div className="flex justify-between mb-2 text-sm">
+      <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+        {language === 'bg' ? 'Междинна сума' : 'Subtotal'}
+      </span>
+      <span style={{ color: isDark ? colors.white : colors.midnightBlack }}>
+        {formatPrice(subtotal).primary}
+      </span>
+    </div>
+    <div className="flex justify-between mb-2 text-sm">
+      <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+        {language === 'bg' ? 'Промо код' : 'Promo code'} ({storePromo.code})
+      </span>
+      <span style={{ color: colors.forestGreen }}>
+        -{formatPrice(promoDiscount).primary}
+      </span>
+    </div>
+    <div className="h-px my-2" style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
+  </>
+)}
+<div className="flex justify-between mb-2">
+  <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+    {storePromo ? (language === 'bg' ? 'След отстъпка' : 'After discount') : (language === 'bg' ? 'Междинна сума' : 'Subtotal')}
+  </span>
+  <span style={{ color: isDark ? colors.white : colors.midnightBlack }}>{formatPrice(subtotalAfterPromo).primary}</span>
+</div>
+<div className="flex justify-between mb-2">
+  <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>{language === 'bg' ? 'Доставка' : 'Shipping'}</span>
+  <span style={{ color: shipping === 0 ? colors.forestGreen : isDark ? colors.white : colors.midnightBlack }}>
+    {shipping === 0 ? (language === 'bg' ? 'Безплатна' : 'Free') : formatPrice(shipping).primary}
+  </span>
+</div>
+            <div className="h-px my-4" style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
+
+<div className="flex justify-between">
+  <span className="font-bold" style={{ color: isDark ? colors.white : colors.midnightBlack }}>{language === 'bg' ? 'Общо' : 'Total'}</span>
+  <div className="text-right">
+    <p className="font-bold text-xl" style={{ color: colors.forestGreen }}>{formatPrice(total).primary}</p>
+    {settings.showBGNReference && (
+      <p className="text-sm" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>{formatPrice(total).secondary}</p>
+    )}
+  </div>
+</div>
           </div>
         </div>
       </div>

@@ -26,7 +26,7 @@ export function TranslatedProductGrid({
       products={products}
       title={title}
       viewAllLink={viewAllLink}
-      columns={columns}
+      columns={columns as 3 | 4 | 5}
     />
   );
 }

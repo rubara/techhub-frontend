@@ -5,24 +5,27 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useUIStore, useWishlistStore, useCartStore } from '@/store';
 import { colors } from '@/lib/colors';
-
-// BGN to EUR fixed rate
-const BGN_TO_EUR = 1.95583;
+import { useCurrencySettings } from '@/hooks/useCurrencySettings';
+import { formatPrice as formatCurrency } from '@/utils/currency';
 
 export default function WishlistPage() {
   const { isDark, language } = useUIStore();
   const { items, removeItem, clearWishlist } = useWishlistStore();
   const { addItem: addToCart } = useCartStore();
+  const { settings } = useCurrencySettings(); // ← ADD THIS LINE
 
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [addingToCartId, setAddingToCartId] = useState<number | null>(null);
 
-  // Format price in both currencies
-  const formatPrice = (priceBGN: number) => ({
-  bgn: (priceBGN || 0).toFixed(2),
-  eur: ((priceBGN || 0) / BGN_TO_EUR).toFixed(2),
-});
-
+// Format price in both currencies
+const formatPrice = (eurPrice: number) => {
+  const formatted = formatCurrency(eurPrice, settings);
+  return {
+    primary: formatted.primary,
+    secondary: formatted.secondary,
+    display: formatted.display,
+  };
+};
   // Get image URL helper
   const getImageUrl = (image?: { url: string } | string): string => {
     if (!image) return '/placeholder-product.svg';
@@ -196,22 +199,23 @@ export default function WishlistPage() {
                   </h3>
                 </Link>
 
-                {/* Price */}
-                <div className="mb-4">
-                  <p
-                    className="text-xl font-bold"
-                    style={{ color: colors.forestGreen }}
-                  >
-                    {price.bgn} лв.
-                  </p>
-                  <p
-                    className="text-sm"
-                    style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-                  >
-                    {price.eur} €
-                  </p>
-                </div>
-
+{/* Price */}
+<div className="mb-4">
+  <p
+    className="text-xl font-bold"
+    style={{ color: colors.forestGreen }}
+  >
+    {price.primary}
+  </p>
+  {settings.showBGNReference && (
+    <p
+      className="text-sm"
+      style={{ color: isDark ? colors.gray : colors.midnightBlack }}
+    >
+      {price.secondary}
+    </p>
+  )}
+</div>
                 {/* Add to Cart Button */}
                 <button
                   onClick={() => handleAddToCart(item)}

@@ -1,19 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUIStore } from '@/store';
 import { colors } from '@/lib/colors';
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isDark, language } = useUIStore();
-  
+
   const orderNumber = searchParams.get('order');
   const documentId = searchParams.get('id');
-  
+
   const [countdown, setCountdown] = useState(10);
 
   useEffect(() => {
@@ -52,102 +52,82 @@ export default function CheckoutSuccessPage() {
       >
         {/* Success Icon */}
         <div
-          className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
+          className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
           style={{ background: 'rgba(0,181,83,0.1)' }}
         >
-          <svg
-            width="40"
-            height="40"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke={colors.forestGreen}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="20 6 9 17 4 12" />
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={colors.forestGreen} strokeWidth="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
           </svg>
         </div>
 
-        {/* Success Message */}
-        <h1
-          className="text-2xl font-bold mb-2"
-          style={{ color: isDark ? colors.white : colors.midnightBlack }}
-        >
-          {language === 'bg' ? 'Поръчката е успешна!' : 'Order Successful!'}
+        {/* Title */}
+        <h1 className="text-2xl font-bold mb-3" style={{ color: isDark ? colors.white : colors.midnightBlack }}>
+          {language === 'bg' ? '🎉 Поръчката е успешна!' : '🎉 Order Successful!'}
         </h1>
 
-        <p
-          className="text-sm mb-6"
-          style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-        >
-          {language === 'bg'
-            ? 'Благодарим ви за поръчката!'
-            : 'Thank you for your order!'}
-        </p>
-
         {/* Order Number */}
-        <div
-          className="p-4 rounded-xl mb-6"
-          style={{
-            background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-          }}
-        >
-          <p
-            className="text-xs mb-1"
-            style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-          >
-            {language === 'bg' ? 'Номер на поръчка' : 'Order Number'}
-          </p>
-          <p
-            className="text-lg font-mono font-bold"
-            style={{ color: colors.forestGreen }}
-          >
+        <p className="mb-6" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+          {language === 'bg' ? 'Номер на поръчка:' : 'Order number:'}
+          <br />
+          <span className="font-mono font-bold text-lg" style={{ color: colors.forestGreen }}>
             {orderNumber}
-          </p>
+          </span>
+        </p>
+
+        {/* Message */}
+        <p className="mb-8 text-sm" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+          {language === 'bg'
+            ? 'Благодарим ви за поръчката! Ще получите имейл с потвърждение скоро.'
+            : 'Thank you for your order! You will receive a confirmation email shortly.'}
+        </p>
+
+        {/* Countdown */}
+        <p className="text-sm mb-6" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+          {language === 'bg'
+            ? `Пренасочване към детайли на поръчката след ${countdown} секунди...`
+            : `Redirecting to order details in ${countdown} seconds...`}
+        </p>
+
+        {/* Buttons */}
+        <div className="flex flex-col gap-3">
+          <Link
+            href={`/account/orders/${documentId}`}
+            className="w-full py-3 px-6 rounded-xl font-semibold transition-all hover:scale-105"
+            style={{ background: colors.forestGreen, color: colors.white }}
+          >
+            {language === 'bg' ? 'Виж поръчката' : 'View Order'}
+          </Link>
+
+          <Link
+            href="/"
+            className="w-full py-3 px-6 rounded-xl font-medium transition-all"
+            style={{
+              background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+              color: isDark ? colors.white : colors.midnightBlack,
+            }}
+          >
+            {language === 'bg' ? 'Продължи пазаруването' : 'Continue Shopping'}
+          </Link>
         </div>
-
-        {/* Info Message */}
-        <p
-          className="text-sm mb-6"
-          style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-        >
-          {language === 'bg'
-            ? 'Ще получите имейл с потвърждение на поръчката.'
-            : 'You will receive an email confirmation shortly.'}
-        </p>
-
-        {/* View Order Button */}
-        <Link
-          href={`/account/orders/${documentId}`}
-          className="block w-full px-6 py-3 rounded-xl font-semibold mb-3 transition-colors"
-          style={{ background: colors.forestGreen, color: colors.white }}
-        >
-          {language === 'bg' ? 'Виж поръчката' : 'View Order'}
-        </Link>
-
-        {/* Continue Shopping Button */}
-        <Link
-          href="/"
-          className="block w-full px-6 py-3 rounded-xl font-medium transition-colors"
-          style={{
-            background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-            color: isDark ? colors.white : colors.midnightBlack,
-          }}
-        >
-          {language === 'bg' ? 'Продължи с пазаруването' : 'Continue Shopping'}
-        </Link>
-
-        {/* Auto-redirect countdown */}
-        <p
-          className="text-xs mt-6"
-          style={{ color: isDark ? colors.gray : colors.midnightBlack }}
-        >
-          {language === 'bg'
-            ? `Автоматично пренасочване след ${countdown} секунди...`
-            : `Auto-redirecting in ${countdown} seconds...`}
-        </p>
       </div>
     </main>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <p>Loading...</p>
+          </div>
+        </main>
+      }
+    >
+      <CheckoutSuccessContent />
+    </Suspense>
   );
 }

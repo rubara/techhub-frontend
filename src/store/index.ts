@@ -4,6 +4,18 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 // ============================================
+// PROMO CODE INTERFACE
+// ============================================
+
+export interface PromoCodeData {
+  code: string;
+  discountPercentage: number;
+  discountAmount: number;
+  finalAmount: number;
+  originalAmount: number;
+}
+
+// ============================================
 // TRANSLATIONS
 // ============================================
 
@@ -386,6 +398,7 @@ interface CartStore {
   items: CartItem[];
   totalItems: number;
   totalPrice: number;
+  appliedPromo: PromoCodeData | null;
 
   addItem: (product: any, quantity?: number) => void;
   removeItem: (productId: number) => void;
@@ -394,12 +407,15 @@ interface CartStore {
   isInCart: (productId: number) => boolean;
   getItemQuantity: (productId: number) => number;
   getItemCount: () => number;
+  setPromo: (promo: PromoCodeData | null) => void;
+  clearPromo: () => void;
 }
 
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
+      appliedPromo: null,
 
       get totalItems() {
         return get().items.reduce((sum, item) => sum + item.quantity, 0);
@@ -443,7 +459,7 @@ export const useCartStore = create<CartStore>()(
           };
         }),
 
-      clearCart: () => set({ items: [] }),
+      clearCart: () => set({ items: [], appliedPromo: null }),
 
       isInCart: (productId) => get().items.some((item) => item.id === productId),
 
@@ -453,6 +469,10 @@ export const useCartStore = create<CartStore>()(
       },
 
       getItemCount: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
+
+      setPromo: (promo: PromoCodeData | null) => set({ appliedPromo: promo }),
+
+      clearPromo: () => set({ appliedPromo: null }),
     }),
     { name: 'techhub-cart' }
   )

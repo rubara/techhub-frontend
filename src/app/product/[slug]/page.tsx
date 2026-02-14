@@ -7,6 +7,7 @@ import { useUIStore } from '@/store';
 import { colors } from '@/lib/colors';
 import { getProductBySlug, getRelatedProducts } from '@/lib/api';
 import { getSpecRelation, getSpecType } from '@/lib/specifications';
+import { useCurrencySettings } from '@/hooks/useCurrencySettings';
 import { Breadcrumb } from '@/components/category';
 import {
   ProductGallery,
@@ -24,6 +25,7 @@ export default function ProductPage() {
   const slug = params.slug as string;
 
   const { isDark, language } = useUIStore();
+  const { settings } = useCurrencySettings();
 
   const [product, setProduct] = useState<any>(null);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
@@ -195,6 +197,7 @@ export default function ProductPage() {
             <ChevronRightIcon size={16} />
           </Link>
         </div>
+
       </main>
     );
   }
@@ -215,6 +218,11 @@ export default function ProductPage() {
 
         {/* Right: Info & Actions */}
         <div>
+          {/* 
+            NOTE: ProductInfo component will receive EUR prices
+            The component itself should be updated to use currency settings
+            OR we pass formatted prices as props
+          */}
           <ProductInfo
             name={product.name}
             brand={product.brand}
@@ -291,14 +299,14 @@ export default function ProductPage() {
                 {language === 'bg' ? 'Наложен платеж' : 'Cash on Delivery'}
               </span>
             </div>
-            {product.price >= 100 && (
+            {product.price >= 100 && settings.showBGNReference && (
               <p
                 className="text-xs mt-3"
                 style={{ color: colors.forestGreen }}
               >
                 {language === 'bg'
-                  ? `Или от ${(product.price / 12).toFixed(2)} лв./месец с TBI Bank`
-                  : `Or from ${(product.price / 12).toFixed(2)} BGN/month with TBI Bank`}
+                  ? `Или от ${(product.price * 1.95583 / 12).toFixed(2)} лв./месец с TBI Bank`
+                  : `Or from ${(product.price * 1.95583 / 12).toFixed(2)} BGN/month with TBI Bank`}
               </p>
             )}
           </div>

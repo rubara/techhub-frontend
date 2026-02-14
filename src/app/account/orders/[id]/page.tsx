@@ -8,8 +8,10 @@ import { useUIStore, useAuthStore } from '@/store';
 import { colors } from '@/lib/colors';
 import { getOrderById, Order } from '@/lib/auth-api';
 import { GenerateInvoiceButton } from '@/components/invoice/GenerateInvoiceButton';
+import { useCurrencySettings } from '@/hooks/useCurrencySettings';
+import { formatPrice as formatCurrency } from '@/utils/currency';
 
-const BGN_TO_EUR = 1.95583;
+
 
 const statusConfig: Record<string, { label: { en: string; bg: string }; color: string; bgColor: string }> = {
   pending: {
@@ -59,6 +61,8 @@ export default function OrderDetailPage() {
 
   const { isDark, language } = useUIStore();
   const { token, isAuthenticated } = useAuthStore();
+const { settings } = useCurrencySettings();
+
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,10 +88,13 @@ export default function OrderDetailPage() {
     fetchOrder();
   }, [orderId, token, isAuthenticated, router]);
 
-  const formatPrice = (price: number) => ({
-    bgn: price.toFixed(2),
-    eur: (price / BGN_TO_EUR).toFixed(2),
-  });
+const formatPrice = (eurPrice: number) => {
+  const formatted = formatCurrency(eurPrice, settings);
+  return {
+    primary: formatted.primary,
+    secondary: formatted.secondary,
+  };
+};
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString(language === 'bg' ? 'bg-BG' : 'en-US', {
@@ -239,23 +246,90 @@ export default function OrderDetailPage() {
                     <p className="font-medium mb-1" style={{ color: isDark ? colors.white : colors.midnightBlack }}>
                       {language === 'bg' && item.nameBg ? item.nameBg : item.name}
                     </p>
-                    <p className="text-sm" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
-                      {item.quantity} x {formatPrice(item.price).bgn} лв.
-                    </p>
+<p className="text-sm" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+  {item.quantity} x {formatPrice(item.price).primary}
+</p>
                   </div>
 
-                  <div className="text-right">
-                    <p className="font-bold" style={{ color: colors.forestGreen }}>
-                      {formatPrice(item.price * item.quantity).bgn} лв.
-                    </p>
-                    <p className="text-xs" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
-                      {formatPrice(item.price * item.quantity).eur} €
-                    </p>
-                  </div>
-                </div>
+<div className="text-right">
+  <p className="font-bold" style={{ color: colors.forestGreen }}>
+    {formatPrice(item.price * item.quantity).primary}
+  </p>
+  {settings.showBGNReference && (
+    <p className="text-xs" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+      {formatPrice(item.price * item.quantity).secondary}
+    </p>
+  )}
+</div>                </div>
               ))}
             </div>
           </div>
+
+          {/* Promo Code Discount */}
+          {order.promoCode && order.promoDiscountAmount && order.promoDiscountAmount > 0 && (
+            <div
+              className="p-6 rounded-2xl"
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.03)' : colors.white,
+                border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+              }}
+            >
+              <h2
+                className="text-lg font-bold mb-4"
+                style={{ color: isDark ? colors.white : colors.midnightBlack }}
+              >
+                {language === 'bg' ? 'Промо код' : 'Promo Code'}
+              </h2>
+
+              <div
+                className="flex items-center justify-between p-4 rounded-xl"
+                style={{
+                  background: 'rgba(0,181,83,0.1)',
+                  border: '1px solid rgba(0,181,83,0.3)',
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ background: colors.forestGreen }}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                      <line x1="7" y1="7" x2="7.01" y2="7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p
+                      className="font-bold text-lg"
+                      style={{ color: colors.forestGreen }}
+                    >
+                      {order.promoCode}
+                    </p>
+                    <p
+                      className="text-sm"
+                      style={{ color: isDark ? colors.gray : colors.midnightBlack }}
+                    >
+                      {order.promoDiscountPercentage}% {language === 'bg' ? 'отстъпка' : 'discount'}
+                    </p>
+                  </div>
+                </div>
+<div className="text-right">
+  <p
+    className="text-sm"
+    style={{ color: isDark ? colors.gray : colors.midnightBlack }}
+  >
+    {language === 'bg' ? 'Спестени' : 'Saved'}
+  </p>
+  <p
+    className="text-xl font-bold"
+    style={{ color: colors.forestGreen }}
+  >
+    {formatPrice(order.promoDiscountAmount).primary}
+  </p>
+</div>
+              </div>
+            </div>
+          )}
 
           {/* Shipping Address */}
           <div
@@ -339,6 +413,8 @@ export default function OrderDetailPage() {
                     paymentMethod={order.paymentMethod}
                     orderNumber={order.orderNumber}
                     existingPdfUrl={order.invoice.pdfFile?.url}
+                    promoCode={order.promoCode}
+                    promoDiscount={order.promoDiscountAmount}
                   />
                 </div>
               </div>
@@ -371,40 +447,64 @@ export default function OrderDetailPage() {
 
             {/* Totals */}
             <div className="space-y-2">
-              <div className="flex justify-between">
-                <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
-                  {language === 'bg' ? 'Междинна сума' : 'Subtotal'}
-                </span>
-                <span style={{ color: isDark ? colors.white : colors.midnightBlack }}>
-                  {formatPrice(subtotal).bgn} лв.
-                </span>
-              </div>
+              {order.promoCode && order.originalAmount && (
+                <>
+<div className="flex justify-between text-sm">
+  <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+    {language === 'bg' ? 'Първоначална сума' : 'Original amount'}
+  </span>
+  <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+    {formatPrice(order.originalAmount).primary}
+  </span>
+</div>
+<div className="flex justify-between text-sm">
+  <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+    {language === 'bg' ? 'Промо отстъпка' : 'Promo discount'} ({order.promoCode})
+  </span>
+  <span style={{ color: colors.forestGreen }}>
+    -{formatPrice(order.promoDiscountAmount || 0).primary}
+  </span>
+</div>
+                  <div className="h-px my-2" style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
+                </>
+              )}
 
-              <div className="flex justify-between">
-                <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
-                  {language === 'bg' ? 'Доставка' : 'Shipping'}
-                </span>
-                <span style={{ color: shipping === 0 ? colors.forestGreen : isDark ? colors.white : colors.midnightBlack }}>
-                  {shipping === 0 ? (language === 'bg' ? 'Безплатна' : 'Free') : `${formatPrice(shipping).bgn} лв.`}
-                </span>
-              </div>
+<div className="flex justify-between">
+  <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+    {language === 'bg' ? 'Междинна сума' : 'Subtotal'}
+  </span>
+  <span style={{ color: isDark ? colors.white : colors.midnightBlack }}>
+    {formatPrice(subtotal).primary}
+  </span>
+</div>
+
+<div className="flex justify-between">
+  <span style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+    {language === 'bg' ? 'Доставка' : 'Shipping'}
+  </span>
+  <span style={{ color: shipping === 0 ? colors.forestGreen : isDark ? colors.white : colors.midnightBlack }}>
+    {shipping === 0 ? (language === 'bg' ? 'Безплатна' : 'Free') : formatPrice(shipping).primary}
+  </span>
+</div>
             </div>
 
             <div className="h-px my-4" style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
 
-            <div className="flex justify-between items-end">
-              <span className="font-bold" style={{ color: isDark ? colors.white : colors.midnightBlack }}>
-                {language === 'bg' ? 'Общо' : 'Total'}
-              </span>
-              <div className="text-right">
-                <p className="font-bold text-2xl" style={{ color: colors.forestGreen }}>
-                  {formatPrice(order.totalAmount).bgn} лв.
-                </p>
-                <p className="text-sm" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
-                  {formatPrice(order.totalAmount).eur} €
-                </p>
-              </div>
-            </div>
+<div className="flex justify-between items-end">
+  <span className="font-bold" style={{ color: isDark ? colors.white : colors.midnightBlack }}>
+    {language === 'bg' ? 'Общо' : 'Total'}
+  </span>
+  <div className="text-right">
+    <p className="font-bold text-2xl" style={{ color: colors.forestGreen }}>
+      {formatPrice(order.totalAmount).primary}
+    </p>
+    {settings.showBGNReference && (
+      <p className="text-sm" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+        {formatPrice(order.totalAmount).secondary}
+      </p>
+    )}
+  </div>
+</div>
 
             {/* Help Link */}
             <div className="mt-6 pt-4 text-center" style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>
