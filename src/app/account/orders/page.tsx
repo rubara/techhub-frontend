@@ -8,14 +8,25 @@ import { useAuthStore } from '@/store';
 import { colors } from '@/lib/colors';
 import { getOrders, Order } from '@/lib/auth-api';
 import { useProtectedRoute } from '@/hooks/use-protected-route';
+import { useCurrencySettings } from '@/hooks/useCurrencySettings';
+import { formatPrice as formatCurrency } from '@/utils/currency';
 
 export default function OrdersPage() {
   const { isDark, language } = useUIStore();
   const { token } = useAuthStore();
   const { isReady } = useProtectedRoute();
+  const { settings } = useCurrencySettings();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const formatPrice = (eurPrice: number) => {
+    const formatted = formatCurrency(eurPrice, settings);
+    return {
+      primary: formatted.primary,
+      secondary: formatted.secondary,
+    };
+  };
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -298,8 +309,13 @@ export default function OrdersPage() {
                         {language === 'bg' ? 'Общо' : 'Total'}
                       </p>
                       <p className="text-lg font-bold" style={{ color: colors.forestGreen }}>
-                        {order.totalAmount.toFixed(2)} лв.
+                        {formatPrice(order.totalAmount).primary}
                       </p>
+                      {settings.showBGNReference && (
+                        <p className="text-xs" style={{ color: isDark ? colors.gray : colors.midnightBlack }}>
+                          {formatPrice(order.totalAmount).secondary}
+                        </p>
+                      )}
                     </div>
                     <Link
                       href={`/account/orders/${order.documentId}`}

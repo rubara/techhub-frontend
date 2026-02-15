@@ -15,79 +15,19 @@ interface CurrencySettings {
   bgnToEurRate: number;
 }
 
-interface OrganisationDetails {
-  companyName: string;
-  eik: string;
-  vatNumber: string;
-  mol: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  phone: string;
-  email: string;
-  bankName: string;
-  iban: string;
-  bic: string;
-  logo?: {
-    url: string;
-    width: number;
-    height: number;
-    formats?: any;
-  };
-}
-
-
-// Fetch organization details from Strapi
-async function getOrganisationDetails(): Promise<OrganisationDetails> {
-  const DEFAULT_ORG = {
-    companyName: 'TekHub BG EOOD',
-    eik: '123456789',
-    vatNumber: 'BG123456789',
-    mol: 'Ivan Ivanov',
-    address: 'bul. Vitosha 100',
-    city: 'Sofia',
-    postalCode: '1000',
-    phone: '+359 2 123 4567',
-    email: 'info@techhub.bg',
-    bankName: 'Unicredit Bulbank',
-    iban: 'BG80UNCR96601234567890',
-    bic: 'UNCRBGSF',
-  };
-
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_STRAPI_URL}/api/organisation-detail?populate=logo`,
-      { cache: 'no-store' }
-    );
-
-    if (!response.ok) {
-      console.warn('Failed to fetch organisation details, using defaults');
-      return DEFAULT_ORG;
-    }
-
-    const result = await response.json();
-    const data = result.data;
-
-    return {
-      companyName: data.companyName || DEFAULT_ORG.companyName,
-      eik: data.eik || DEFAULT_ORG.eik,
-      vatNumber: data.vatNumber || DEFAULT_ORG.vatNumber,
-      mol: data.mol || DEFAULT_ORG.mol,
-      address: data.address || DEFAULT_ORG.address,
-      city: data.city || DEFAULT_ORG.city,
-      postalCode: data.postalCode || DEFAULT_ORG.postalCode,
-      phone: data.phone || DEFAULT_ORG.phone,
-      email: data.email || DEFAULT_ORG.email,
-      bankName: data.bankName || DEFAULT_ORG.bankName,
-      iban: data.iban || DEFAULT_ORG.iban,
-      bic: data.bic || DEFAULT_ORG.bic,
-      logo: data.logo,
-    };
-  } catch (error) {
-    console.error('Error fetching organisation details:', error);
-    return DEFAULT_ORG;
-  }
-}
+const DEFAULT_SELLER = {
+  name: 'TekHub BG EOOD',
+  eik: '123456789',
+  vatNumber: 'BG123456789',
+  mol: 'Ivan Ivanov',
+  address: 'bul. Vitosha 100',
+  city: 'Sofia 1000',
+  phone: '+359 2 123 4567',
+  email: 'info@techhub.bg',
+  bank: 'Unicredit Bulbank',
+  iban: 'BG80UNCR96601234567890',
+  bic: 'UNCRBGSF',
+};
 
 // Fetch currency settings from Strapi
 async function getCurrencySettings(): Promise<CurrencySettings> {
@@ -156,13 +96,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch organization details and currency settings
-    const [seller, settings] = await Promise.all([
-      getOrganisationDetails(),
-      getCurrencySettings(),
-    ]);
-    
-    console.log('🏢 Organization details loaded:', seller.companyName);
+    // Fetch currency settings
+    const settings = await getCurrencySettings();
     console.log('💱 Currency settings:', settings);
 
     const calculatedSubtotal = subtotal || items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
@@ -191,53 +126,15 @@ export async function POST(request: NextRequest) {
     const rightMargin = pageWidth - 15;
     let yPos = 20;
 
-    // Add logo if available
-    let logoHeight = 0;
-    if (seller.logo?.url) {
-      try {
-        const logoUrl = seller.logo.url.startsWith('http')
-          ? seller.logo.url
-          : `${process.env.NEXT_PUBLIC_STRAPI_URL}${seller.logo.url}`;
-        
-        console.log('📷 Fetching logo from:', logoUrl);
-        const logoResponse = await fetch(logoUrl);
-        
-        if (logoResponse.ok) {
-          const logoBlob = await logoResponse.blob();
-const logoBuffer = Buffer.from(await logoBlob.arrayBuffer());
-const logoBase64 = `data:${logoBlob.type};base64,${logoBuffer.toString('base64')}`;
-          
-          // Calculate logo dimensions (max width 50mm, maintain aspect ratio)
-          const maxLogoWidth = 50;
-          const aspectRatio = seller.logo.height / seller.logo.width;
-          const logoWidth = maxLogoWidth;
-          logoHeight = logoWidth * aspectRatio;
-          
-          // Add logo to PDF
-          doc.addImage(logoBase64, 'PNG', leftMargin, yPos, logoWidth, logoHeight);
-          console.log('✅ Logo added to PDF');
-          
-          yPos += logoHeight + 5; // Move down past logo
-        }
-      } catch (logoError) {
-        console.warn('⚠️ Failed to add logo:', logoError);
-        // Continue without logo
-      }
-    }
+    // HEADER - Left Side
+    doc.setFontSize(24);
+    doc.setFont('Roboto', 'bold');
+    doc.text('TechHub.bg', leftMargin, yPos);
 
-    // HEADER - Left Side (Company Name from Strapi)
-
-if (!seller.logo) {
-  // Only show text if no logo
-  doc.setFontSize(24);
-  doc.setFont('Roboto', 'bold');
-  doc.text(seller.companyName, leftMargin, yPos);
-
-  yPos += 8;
-  doc.setFontSize(10);
-  doc.setFont('Roboto', 'normal');
-  doc.text('Computer Hardware & Peripherals', leftMargin, yPos);
-}
+    yPos += 8;
+    doc.setFontSize(10);
+    doc.setFont('Roboto', 'normal');
+    doc.text('Computer Hardware & Peripherals', leftMargin, yPos);
 
     // HEADER - Right Side (Bilingual)
     let rightYPos = 20;
@@ -269,7 +166,7 @@ if (!seller.logo) {
     doc.setDrawColor(200, 200, 200);
     doc.line(leftMargin, yPos, rightMargin, yPos);
 
-    // SELLER INFO - Left Column (from Strapi)
+    // SELLER INFO - Left Column (Bilingual)
     yPos = 60;
     doc.setFontSize(10);
     doc.setFont('Roboto', 'bold');
@@ -277,22 +174,22 @@ if (!seller.logo) {
 
     yPos += 6;
     doc.setFont('Roboto', 'normal');
-    doc.text(seller.companyName, leftMargin, yPos);
+    doc.text(DEFAULT_SELLER.name, leftMargin, yPos);
 
     yPos += 5;
-    doc.text(`ЕИК / EIN: ${seller.eik}`, leftMargin, yPos);
+    doc.text(`ЕИК / EIN: ${DEFAULT_SELLER.eik}`, leftMargin, yPos);
 
     yPos += 5;
-    doc.text(`ДДС / VAT: ${seller.vatNumber}`, leftMargin, yPos);
+    doc.text(`ДДС / VAT: ${DEFAULT_SELLER.vatNumber}`, leftMargin, yPos);
 
     yPos += 5;
-    doc.text(`МОЛ / Director: ${seller.mol}`, leftMargin, yPos);
+    doc.text(`МОЛ / Director: ${DEFAULT_SELLER.mol}`, leftMargin, yPos);
 
     yPos += 5;
-    doc.text(seller.address, leftMargin, yPos);
+    doc.text(DEFAULT_SELLER.address, leftMargin, yPos);
 
     yPos += 5;
-    doc.text(`${seller.city} ${seller.postalCode}`, leftMargin, yPos);
+    doc.text(DEFAULT_SELLER.city, leftMargin, yPos);
 
     // BUYER INFO - Right Column (Bilingual)
     let buyerY = 60;
@@ -491,13 +388,13 @@ if (!seller.logo) {
 
       yPos += 6;
       doc.setFont('Roboto', 'normal');
-      doc.text(`Банка / Bank: ${seller.bankName}`, leftMargin, yPos);
+      doc.text(`Банка / Bank: ${DEFAULT_SELLER.bank}`, leftMargin, yPos);
 
       yPos += 5;
-      doc.text(`IBAN: ${seller.iban}`, leftMargin, yPos);
+      doc.text(`IBAN: ${DEFAULT_SELLER.iban}`, leftMargin, yPos);
 
       yPos += 5;
-      doc.text(`BIC: ${seller.bic}`, leftMargin, yPos);
+      doc.text(`BIC: ${DEFAULT_SELLER.bic}`, leftMargin, yPos);
     }
 
     // FOOTER - Fixed position at bottom
@@ -520,7 +417,7 @@ if (!seller.logo) {
     doc.setFontSize(7);
     doc.text('(подпис / signature)', rightSigX + 37, footerY + 12);
 
-    // Footer text (Bilingual) - Use Strapi data
+    // Footer text (Bilingual)
     doc.setFontSize(7);
     doc.setTextColor(100, 100, 100);
     doc.text(
@@ -536,7 +433,7 @@ if (!seller.logo) {
       { align: 'center' }
     );
     doc.text(
-      `${seller.companyName} | ${seller.email} | ${seller.phone}`,
+      `TechHub.bg | ${DEFAULT_SELLER.email} | ${DEFAULT_SELLER.phone}`,
       pageWidth / 2,
       footerY + 25,
       { align: 'center' }

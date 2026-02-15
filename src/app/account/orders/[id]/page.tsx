@@ -390,7 +390,7 @@ const formatPrice = (eurPrice: number) => {
 
                   {/* Generate Invoice Button */}
                   <GenerateInvoiceButton
-                    invoiceId={order.invoice.id}
+                      invoiceDocumentId={order.invoice.documentId}
                     invoiceNumber={order.invoice.invoiceNumber}
                     issuedDate={order.invoice.issuedDate}
                     buyer={{

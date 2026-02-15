@@ -6,7 +6,7 @@ import { useUIStore, useAuthStore } from '@/store';
 import { colors } from '@/lib/colors';
 
 interface GenerateInvoiceButtonProps {
-  invoiceDocumentId?: string;
+  invoiceDocumentId?: string;  // Changed from invoiceId: number
   invoiceNumber: string;
   issuedDate: string;
   buyer: {
@@ -55,7 +55,7 @@ export function GenerateInvoiceButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fix relative URLs by prepending Strapi URL
+ // Fix relative URLs by prepending Strapi URL
   const pdfUrl = existingPdfUrl 
     ? existingPdfUrl.startsWith('http')
       ? existingPdfUrl
@@ -117,22 +117,24 @@ export function GenerateInvoiceButton({
         throw new Error('No file ID returned from upload');
       }
 
-      // Link PDF to invoice (only if we have a documentId)
-      if (!invoiceDocumentId) {
-        console.warn('No invoice documentId, skipping link step');
-        const url = window.URL.createObjectURL(pdfBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `faktura-${invoiceNumber}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        return;
-      }
+      // Link PDF to invoice
+// Link PDF to invoice (only if we have a documentId)
+if (!invoiceDocumentId) {
+  console.warn('No invoice documentId, skipping link step');
+  // Just download the PDF without linking
+  const url = window.URL.createObjectURL(pdfBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `invoice-${invoiceNumber}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  return;
+}
 
-      const linkResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_STRAPI_URL}/api/invoice-clients/${invoiceDocumentId}`,
+const linkResponse = await fetch(
+  `${process.env.NEXT_PUBLIC_STRAPI_URL}/api/invoice-clients/${invoiceDocumentId}`,
         {
           method: 'PUT',
           headers: {
@@ -148,52 +150,11 @@ export function GenerateInvoiceButton({
       );
 
       if (!linkResponse.ok) {
-        const errorText = await linkResponse.text();
-        console.error('Link response error:', errorText);
-        throw new Error(`Failed to link PDF to invoice: ${linkResponse.status} ${errorText}`);
+        throw new Error('Failed to link PDF to invoice');
       }
 
-      // Success! Force page reload to show "View Invoice" button
-      console.log('✅ Invoice PDF linked successfully - reloading page');
-if (!linkResponse.ok) {
-  const errorText = await linkResponse.text();
-  console.error('Link response error:', errorText);
-  throw new Error(`Failed to link PDF to invoice: ${linkResponse.status} ${errorText}`);
-}
-
-// Success! Wait for Strapi to update
-// Success! Show success message
-console.log('✅ Invoice PDF linked successfully');
-setLoading(false);
-setError(null);
-
-// Show success state
-const successDiv = document.createElement('div');
-successDiv.style.cssText = `
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: #10b981;
-  color: white;
-  padding: 16px 24px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  z-index: 9999;
-  font-weight: 500;
-`;
-successDiv.innerHTML = language === 'bg'
-  ? '✅ Фактурата е генерирана!<br><small>Обновете страницата (F5) за да я видите.</small>'
-  : '✅ Invoice generated!<br><small>Refresh the page (F5) to view it.</small>';
-
-document.body.appendChild(successDiv);
-
-// Remove after 8 seconds
-setTimeout(() => {
-  successDiv.remove();
-}, 8000);
-
-return; // Exit early, don't set loading to false
-
+      // Refresh page to show new PDF
+      router.refresh();
     } catch (err: any) {
       console.error('Invoice generation error:', err);
       setError(err.message || 'Failed to generate invoice');
@@ -235,7 +196,7 @@ return; // Exit early, don't set loading to false
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `faktura-${invoiceNumber}.pdf`;
+      a.download = `invoice-${invoiceNumber}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

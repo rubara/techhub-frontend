@@ -677,14 +677,15 @@ export async function getOrderById(
 ): Promise<{ data: Order | null; error: { message: string } | null }> {
   try {
     // Use correct populate syntax that we know works
-    const response = await fetch(
-      `${STRAPI_URL}/api/orders/${orderId}?populate=users_permissions_user&populate=invoice_client`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+const response = await fetch(
+  `${STRAPI_URL}/api/orders/${orderId}?populate=*`,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  }
+);
 
     if (!response.ok) {
       console.error('Failed to fetch order:', response.status);
@@ -694,8 +695,50 @@ export async function getOrderById(
       };
     }
 
-    const result = await response.json();
-    const item = result.data;
+
+const result = await response.json();
+const orderData = result.data;
+
+console.log('📦 Order data received');
+console.log('🔍 Invoice client documentId:', orderData.invoice_client?.documentId);
+
+// Fetch invoice with pdfFile populated if it exists
+if (orderData.invoice_client?.documentId) {
+  console.log('⏳ Fetching invoice details...');
+  try {
+    const invoiceResponse = await fetch(
+      `${STRAPI_URL}/api/invoice-clients/${orderData.invoice_client.documentId}?populate=pdfFile`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: 'no-store',
+      }
+    );
+    
+    console.log('📡 Invoice response status:', invoiceResponse.status);
+    
+    if (invoiceResponse.ok) {
+      const invoiceData = await invoiceResponse.json();
+      console.log('📄 Invoice data:', JSON.stringify(invoiceData.data, null, 2));
+      console.log('🖼️ PDF File present?', invoiceData.data?.pdfFile ? 'YES' : 'NO');
+      
+      if (invoiceData.data?.pdfFile) {
+        console.log('📎 PDF URL:', invoiceData.data.pdfFile.url);
+      }
+      
+      // Replace the invoice_client with the fully populated one
+      orderData.invoice_client = invoiceData.data;
+    }
+  } catch (err) {
+    console.error('❌ Failed to fetch invoice with pdfFile:', err);
+  }
+} else {
+  console.log('⚠️ No invoice_client documentId found in order data');
+}
+
+// Now continue with the rest of the transformation...   
+ const item = result.data;
 
     if (!item) {
       return {
