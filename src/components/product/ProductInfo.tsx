@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useUIStore } from '@/store';
 import { colors } from '@/lib/colors';
 import { StarIcon } from '@/components/ui';
+import { useCurrencySettings } from '@/hooks/useCurrencySettings';
 
 interface ProductInfoProps {
   name: string;
@@ -36,9 +37,18 @@ export const ProductInfo = ({
   reviewCount = 0,
 }: ProductInfoProps) => {
   const { isDark, language } = useUIStore();
+  const { settings } = useCurrencySettings();
 
-  const discount = originalPrice && originalPrice > price
-    ? Math.round(((originalPrice - price) / originalPrice) * 100)
+  // ✅ Price is ALREADY in EUR from backend
+  const priceEur = price;
+  const originalPriceEur = originalPrice;
+
+  // ✅ Convert to BGN (EUR * 1.95583)
+  const priceBgn = priceEur * 1.95583;
+  const originalPriceBgn = originalPriceEur ? originalPriceEur * 1.95583 : undefined;
+
+  const discount = originalPriceEur && originalPriceEur > priceEur
+    ? Math.round(((originalPriceEur - priceEur) / originalPriceEur) * 100)
     : 0;
 
   const stockStatus = () => {
@@ -123,29 +133,54 @@ export const ProductInfo = ({
         )}
       </div>
 
-      {/* Price */}
-      <div className="flex items-baseline gap-3 pt-2">
-        <span
-          className="text-3xl font-bold"
-          style={{ color: colors.forestGreen }}
-        >
-          {price.toFixed(2)} лв.
-        </span>
-        {originalPrice && originalPrice > price && (
-          <>
+      {/* Price - EUR PRIMARY, BGN SECONDARY */}
+      <div className="pt-2">
+        <div className="flex items-baseline gap-3">
+          {/* PRIMARY: EUR Price */}
+          <span
+            className="text-3xl font-bold"
+            style={{ color: colors.forestGreen }}
+          >
+            €{priceEur.toFixed(2)}
+          </span>
+          
+          {/* Discount Badge */}
+          {originalPriceEur && originalPriceEur > priceEur && (
+            <>
+              <span
+                className="text-xl line-through"
+                style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }}
+              >
+                €{originalPriceEur.toFixed(2)}
+              </span>
+              <span
+                className="px-2 py-1 rounded text-sm font-semibold"
+                style={{ background: colors.pink, color: colors.white }}
+              >
+                -{discount}%
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* SECONDARY: BGN Price (only if enabled in Strapi settings) */}
+        {settings.showBGNReference && (
+          <div className="mt-1">
             <span
-              className="text-xl line-through"
-              style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }}
+              className="text-sm"
+              style={{ color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}
             >
-              {originalPrice.toFixed(2)} лв.
+              {language === 'bg' ? 'или' : 'or'} {priceBgn.toFixed(2)} лв.
+              {originalPriceBgn && originalPriceBgn > priceBgn && (
+                <>
+                  {' '}
+                  <span className="line-through">
+                    {originalPriceBgn.toFixed(2)} лв.
+                  </span>
+                </>
+              )}
             </span>
-            <span
-              className="px-2 py-1 rounded text-sm font-semibold"
-              style={{ background: colors.pink, color: colors.white }}
-            >
-              -{discount}%
-            </span>
-          </>
+          </div>
         )}
       </div>
 

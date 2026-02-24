@@ -125,6 +125,7 @@ export async function getProducts(params?: {
   try {
     const queryParams = new URLSearchParams();
 
+    // ✅ Use populate=* for product lists (works reliably)
     queryParams.append('populate', '*');
 
     if (params?.limit) {
@@ -162,6 +163,7 @@ export async function getProducts(params?: {
 
 export async function getProductBySlug(slug: string): Promise<any | null> {
   try {
+    // ✅ For single product, use populate=* which includes all relations
     const response = await fetchAPI<{ data: any[] }>(
       `/products?filters[slug][$eq]=${slug}&populate=*`
     );
@@ -261,7 +263,7 @@ export async function getFilteredProducts(filters: ProductFilters): Promise<{
   try {
     const queryParams = new URLSearchParams();
 
-    // Populate relations
+    // ✅ Use populate=* for product lists
     queryParams.append('populate', '*');
 
     // Category filter
@@ -274,6 +276,7 @@ export async function getFilteredProducts(filters: ProductFilters): Promise<{
       queryParams.append('filters[price][$gte]', filters.minPrice.toString());
     }
     if (filters.maxPrice !== undefined) {
+
       queryParams.append('filters[price][$lte]', filters.maxPrice.toString());
     }
 
@@ -282,13 +285,13 @@ export async function getFilteredProducts(filters: ProductFilters): Promise<{
       queryParams.append('filters[stock][$gt]', '0');
     }
 
-    // Specification filters (e.g., gpuSpecification.chipManufacturer)
+    // Specification filters (e.g., gpu_specification.chipManufacturer)
     if (filters.specRelation && filters.specFilters) {
-      const specRelation = filters.specRelation; // e.g., 'gpuSpecification'
-      
+      const specRelation = filters.specRelation; // e.g., 'gpu_specification'
+
       Object.entries(filters.specFilters).forEach(([field, value]) => {
         if (value === undefined || value === null || value === '') return;
-        
+
         if (Array.isArray(value) && value.length > 0) {
           // Multiple values - use $in operator
           value.forEach((v, index) => {
